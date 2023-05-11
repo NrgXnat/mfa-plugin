@@ -1,0 +1,8 @@
+<script type="text/javascript">
+    var username = '#escapeAll($!item.getProperty("login"))';
+</script>
+<script type="text/javascript" src="$content.getURI("scripts/mfa/mfaUserDetails.js")"></script>
+<div style="padding:10px;background:#f0f0f0;border:1px solid #ccc">
+    <h3>Multi-factor Authentication Settings</h3>
+    <div id="mfa-settings-container"></div>
+</div>

@@ -1,0 +1,47 @@
+#set($disabled=true)
+$!data.getTemplateInfo().setLayoutTemplate("Noninteractive.vm")
+<script type="text/javascript" src="/scripts/mfa/multifactorAuth.js"></script>
+<div id="mfa-login-container"></div>
+
+<script type="text/javascript">
+	$(document).ready(function() {
+		$("#xnat_power").hide();
+		var multifactorAuthPanel = {
+				tag: 'div.mfa-login-box',
+				contents:{
+					mfaStyleSheet: {
+						tag: 'link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuth.css'
+					},
+					mfaHeader: {
+						tag: 'div',
+						contents: '<h2>SMS based Multifactor Authentication</h2>'
+					},
+					multifactorLoginBox: {
+						tag: 'div',
+						contents: {
+							authenticatorVerify: {
+								tag: 'div',
+								contents:
+									'<div class="message">' +
+									'An SMS with the verification code has been sent to your registered Phone number ' + 
+									'Enter your 6 digit verification code in the text box below. ' +
+									'</div>' +
+									'<input type="text" id="authenticator-code" size="11" maxlength="6"></input>' + 
+									'<a class="btn1 mfa-verify-btn" id="mfa-login-btn" onclick="XNAT.app.MultifactorAuth.mfaLogin()" href="#!">Verify Code</a>' + 
+									'<span id="mfa-error"><i class="fa fa-asterisk"></i><span id="error-msg"></span></span>' 
+							}
+						}
+					}
+				}
+		}
+		XNAT.spawner.spawn({multifactorAuthPanel}).render($("div#mfa-login-container"));
+		$("#authenticator-code").focus();
+
+		// Handle enter key
+		$("#authenticator-code").keyup(function(event) {
+			if (event.keyCode === 13) {
+				$("a.mfa-verify-btn").click();
+			}
+		});
+});
+</script>

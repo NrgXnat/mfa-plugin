@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration>
+  <appender name="mfa-plugin" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <append>true</append>
+        <file>${xnat.home}/logs/mfa.log</file>
+        <encoder>
+            <pattern>%d [%t] %-5p %c - %m%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${xnat.home}/logs/mfa.log.%d{yyyy-MM-dd}</fileNamePattern>
+        </rollingPolicy>
+  </appender>
+  <logger name="com.radiologics.mfa" additivity="false" level="ERROR">
+     <appender-ref ref="mfa-plugin"/>
+ </logger>
+</configuration>

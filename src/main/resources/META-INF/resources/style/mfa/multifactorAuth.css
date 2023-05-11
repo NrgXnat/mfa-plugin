@@ -1,0 +1,103 @@
+div#mfa-login-container{
+    text-align: center;
+    width:      50%;
+    margin:     auto;
+}
+
+#authenticator-setup{
+    text-align: center;
+    margin:     auto;
+}
+
+#authenticator-qr{
+	margin: 1em;
+}
+
+div.mfa-login-box{
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    padding: 20px;
+}
+
+div.multifactor-enabled{
+    display:     none;
+    font-size:   20px;
+}
+
+span#mfa-error{
+    display: none;
+    color:   #c66;
+    position: absolute;
+    margin-left: 6px;
+    margin-top: 6px;
+}
+
+input#authenticator-code{
+    font-family:    monospace;
+    font-size:      15px;
+    letter-spacing: 8px;
+}
+
+input.error{
+  border: solid 1px #c66;
+}
+
+a.mfa-disable-btn{
+    margin-top: 1em;
+    margin-left: 1em;
+    display: none;
+}
+
+div#authenticator-secret{
+    font-size: 20px;
+}
+
+a.mfa-verify-btn{
+    margin-left:    5px;
+}
+
+i.mfa-check{
+    margin-right: 5px;
+    padding-top:  5px;
+    font-size:    27px;
+    color:        green;
+}
+
+div.mfa-login-box div.message {
+    margin-bottom: 15px;
+}
+
+div.mfa-login-box .mfa-input {
+    margin-top: 5px;
+    margin-right: 5px;
+}
+
+
+#mfa-user-details .panel-switchbox {
+    margin-top: 10px;
+    font-size: 13px;
+}
+
+#mfa-user-details .panel-switchbox .element-label {
+    margin-right: 20px;
+}
+
+#mfa-user-details .panel-switchbox .element-wrapper {
+    display: inline-block;
+}
+
+#mfa-user-details .description {
+    margin: 5px 2px;
+    color: #727272;
+    font-size: 13px;
+    line-height: 17px;
+}
+
+#mfa-user-details .mfa-setting{
+    margin-top: 15px;
+}
+
+#mfa-user-details div.mfa-setting div.select-label{
+    margin-right: 20px;
+    display: inline;
+}

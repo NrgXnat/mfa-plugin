@@ -1,0 +1,74 @@
+# Copyright 2019 Radiologics, Inc
+# Developer: James Ransford ransfordj@radiologics.com
+#            Mohana Ramaratnam (mohana@radiologics.com) 		
+
+preferredSiteMfa:
+    kind: panel.form
+    name: preferredSiteMfa
+    id: preferred-site-mfa
+    footer: false
+    label: "MFA for all users"
+    contents:
+        tableCss:
+            tag: link|rel="stylesheet"|type="text/css"|href="/scripts/xnat/app/scanTable/scanTable.css"
+        config:
+            tag: div#preferredSiteMfa-manager #dont change, see multifactorAuth-siteAdmin.js
+
+exemptedSettings:
+    kind: panel
+    name: exemptedSettings
+    label: "Exempted Users"
+    contents:
+        info:
+            tag: p
+            element:
+                style: "margin: 15px 0 30px"
+            contents: Use the table below to exempt users from MFA
+        config:
+            tag: div#mfa-exempt-users.data-table-container #dont change, see multifactorAuth-siteAdmin.js
+            
+mfaSettingsForm:
+    kind: panel.form
+    name: mfaSettingsForm
+    id: mfa-settings-form
+    footer: false
+    label: Multifactor Authentication Site Configuration
+    contents:
+        siteAdminScripts:
+            tag: script|src="~/scripts/mfa/multifactorAuth-siteAdmin.js"
+        require_mfa:
+            kind: panel.input.switchbox
+            name: requireMfa
+            id: requireMfa
+            label: Require MFA
+            description: Require Multifactor Authentication to be enabled on all non admin accounts.
+        require_admin_mfa:
+            kind: panel.input.switchbox
+            name: requireAdminMfa
+            id: requireAdminMfa
+            label: Require MFA for Administrators
+            description: Require Multifactor Authentication to be enabled on Admin accounts. 
+        config:
+           tag: div#mfa-siteConfig-manager #dont change, see multifactorAuth-siteAdmin.js
+
+mfaSettingsTab:
+    kind: tab
+    name: mfaSettingsTab
+    label: Multifactor Authentication
+    group: crPluginsTabGroup
+    contents:
+        ${mfaSettingsForm}
+        ${preferredSiteMfa}
+        ${exemptedSettings}
+
+# Group these settings with other XNAT CR feature settings
+siteSettings:
+    kind: tabs
+    name:  xnatCRSettings
+    label: XNAT-CR Settings
+    meta:
+        tabGroups:
+            crPluginsTabGroup: XNAT-CR Settings
+    contains: tabs
+    tabs: 
+          ${mfaSettingsTab}

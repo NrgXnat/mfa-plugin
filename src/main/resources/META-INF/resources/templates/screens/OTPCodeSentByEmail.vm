@@ -1,0 +1,12 @@
+<div id="logo" align="center">#parse("/screens/Logo_Email.vm")</div>
+<div id="content">
+Dear $!userFullName<br><br>
+<p>
+As per your request, a One Time Password (OTP) has been generated and the OTP is $code <br>
+Please use this OTP to complete the login. <br><br>
+Note: OTP will expire in a single attempt, including unsuccessful one. The transaction would have to be re-initiated and a new OTP to be generated.
+</p>
+<br>
+The $system Team
+<a href="$server">$server</a>
+<a href="mailto:$contact_email">$contact_email</a>
