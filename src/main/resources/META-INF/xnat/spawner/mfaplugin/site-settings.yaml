@@ -54,8 +54,8 @@ mfaSettingsForm:
 mfaSettingsTab:
     kind: tab
     name: mfaSettingsTab
-    label: Multifactor Authentication
-    group: crPluginsTabGroup
+    label: MFA Settings
+    group: mfaTabGroup
     contents:
         ${mfaSettingsForm}
         ${preferredSiteMfa}
@@ -64,11 +64,11 @@ mfaSettingsTab:
 # Group these settings with other XNAT CR feature settings
 siteSettings:
     kind: tabs
-    name:  xnatCRSettings
-    label: XNAT-CR Settings
+    name:  mfaAdmin
+    label: Multifactor Authentication
     meta:
         tabGroups:
-            crPluginsTabGroup: XNAT-CR Settings
+            mfaTabGroup: MFA Settings
     contains: tabs
     tabs: 
           ${mfaSettingsTab}
