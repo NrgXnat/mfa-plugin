@@ -50,18 +50,19 @@ public class MFAPreferencesHelper {
 		return _siteConfig.set(mfaStrategy, MFAConstants.MFA_PREFERRED);
 	}
 
-        public String getPreferredMFAMethod(MultifactorEntity mfe) {
-		String userOveriddenPreferredMethod = getPreferredMFAMethod();
-		if (null == mfe) {
-			log.debug("MFE is null - Returning UserOveriddenPreferredMethod: " + userOveriddenPreferredMethod);
-			return userOveriddenPreferredMethod;
-		}
-		userOveriddenPreferredMethod = mfe.getPreferredMfas();
-		if (null == userOveriddenPreferredMethod) {
-			log.debug("MFE is not null but no preferredMFA" );
-			userOveriddenPreferredMethod = getPreferredMFAMethod();
-		}
-		return userOveriddenPreferredMethod;
+   public String getPreferredMFAMethod(MultifactorEntity mfe) {
+	   final String userOveriddenPreferredMethod = mfe != null ? mfe.getPreferredMfas() : null;
+	   if (null == userOveriddenPreferredMethod) {
+		  final String mfaMethodFromConfig = getPreferredMFAMethod();
+		  if (null == mfe) {
+			log.debug("MFE is null - Returning Preferred Method: {}", mfaMethodFromConfig);
+		  } else {
+			log.debug("MFE is not null but no preferredMFA - Returning Preferred Method: {}", mfaMethodFromConfig);
+		  }
+		  return mfaMethodFromConfig;
+	   }
+	   log.debug("Returning UserOveriddenPreferredMethod: {}", userOveriddenPreferredMethod);
+	   return userOveriddenPreferredMethod;
 	}
 
 	
@@ -77,6 +78,6 @@ public class MFAPreferencesHelper {
 	private final SiteConfigPreferences _siteConfig;
 
 	@Autowired
-        private final MultifactorAuthenticationService _mfaService;
+	private final MultifactorAuthenticationService _mfaService;
 
 }

@@ -85,7 +85,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
 		return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 	}
 
-        @ApiOperation(value = "Enables tools to prepare for Multifactor Authentication", notes = "Returns the JSESSION ID and CSRF token for the session.", response = String.class)
+	@ApiOperation(value = "Enables tools to prepare for Multifactor Authentication", notes = "Returns the JSESSION ID and CSRF token for the session.", response = String.class)
 	@XapiRequestMapping(value = {"/verify"}, produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
 	public ResponseEntity<String> prepareToVerifyMFA(HttpSession httpSession ) throws Exception {
 		final UserI user = XDAT.getUserDetails();
