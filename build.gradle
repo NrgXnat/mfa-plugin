@@ -8,7 +8,7 @@
 import org.gradle.internal.jvm.Jvm
 
 group 'com.radiologics'
-version '1.3.0-SNAPSHOT'
+version '1.2.1-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'idea'
@@ -85,8 +85,8 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.6.5"
     
     
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-sns', version: '1.11.901'
-    compile group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.11.901'
+    compileAndInclude group: 'com.amazonaws', name: 'aws-java-sdk-sns', version: '1.11.901'
+    compileAndInclude group: 'com.amazonaws', name: 'aws-java-sdk-core', version: '1.11.901'
 	
     compileAndInclude 'org.jboss.aerogear:aerogear-otp-java:1.0.0'
     implementation "org.nrg:framework"
