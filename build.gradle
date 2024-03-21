@@ -8,7 +8,7 @@
 import org.gradle.internal.jvm.Jvm
 
 group 'com.radiologics'
-version '1.2.1'
+version '1.2.1-SNAPSHOT'
 
 apply plugin: 'java'
 apply plugin: 'idea'
@@ -17,6 +17,7 @@ apply plugin: 'maven-publish'
 apply plugin: 'eclipse'
 apply plugin: 'io.spring.dependency-management'
 apply plugin: 'io.franzbecker.gradle-lombok'
+apply plugin: 'net.linguica.maven-settings'
 
 buildscript {
     ext {
@@ -32,6 +33,7 @@ buildscript {
     dependencies {
         classpath "io.spring.gradle:dependency-management-plugin:1.0.6.RELEASE"
 	    classpath "io.franzbecker:gradle-lombok:4.0.0"
+        classpath "net.linguica.gradle:maven-settings-plugin:0.5"         
     }
 }
 
@@ -140,6 +142,13 @@ publishing {
                     url = 'https://bitbucket.org/radiologics/mfa_plugin'
                 }
             }
+        }
+    }
+    repositories{ 
+        maven {
+            url "https://nrgxnat.jfrog.io/nrgxnat/libs-${project.version.endsWith("-SNAPSHOT") ? "snapshot" : "release"}"
+            // The value for name must match <id> in ~/.m2/settings.xml
+            name = "XNAT_Artifactory"
         }
     }
 }
