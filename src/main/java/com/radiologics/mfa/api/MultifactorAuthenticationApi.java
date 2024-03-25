@@ -84,24 +84,6 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
 		}
 		return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
 	}
-
-	@ApiOperation(value = "Enables tools to prepare for Multifactor Authentication", notes = "Returns the JSESSION ID and CSRF token for the session.", response = String.class)
-	@XapiRequestMapping(value = {"/verify"}, produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
-	public ResponseEntity<String> prepareToVerifyMFA(HttpSession httpSession ) throws Exception {
-		final UserI user = XDAT.getUserDetails();
-		log.debug("Authenticated User is " + user.getLogin() + " " + user.getEmail());
-		if (user != null) {
-			String authenticator = mfaPreferencesHelper.getPreferredMFAMethod(user);
-			log.debug("Authenticator for User is " + authenticator);
-			return new ResponseEntity<String>(
-					"{\"JSESSION\":\"" + httpSession.getId() + "\"" + 
-					  ", \"XNAT_CSRF\": \""+httpSession.getAttribute("XNAT_CSRF") + "\"" +
-					  ", \"authenticationType\": \"" + authenticator + "\"}",HttpStatus.OK);
-		}
-		return new ResponseEntity<String>(HttpStatus.BAD_REQUEST);
-		
-	}
-
 	
 	@ApiOperation(value = "Configure Multi-factor Authentication")
 	@XapiRequestMapping(value = {"/configure"},  method = RequestMethod.POST, restrictTo = AccessLevel.Admin)

@@ -25,10 +25,8 @@ public class MFAPreferencesHelper {
 	
 	@Autowired
 	public MFAPreferencesHelper(final SiteConfigPreferences siteConfig,
-				    final MultifactorAuthenticationService mfaservice,
-				    final MFAPreferences pref) {
+								final MFAPreferences pref) {
 		_siteConfig = siteConfig;
-		_mfaService = mfaservice;	
 		_pref = pref;
 		initSiteConfigWithMFA();
 	}
@@ -49,35 +47,11 @@ public class MFAPreferencesHelper {
 	public String setPreferredMFAMethod(String mfaStrategy) throws UnknownToolId, InvalidPreferenceName {
 		return _siteConfig.set(mfaStrategy, MFAConstants.MFA_PREFERRED);
 	}
-
-   public String getPreferredMFAMethod(MultifactorEntity mfe) {
-	   final String userOveriddenPreferredMethod = mfe != null ? mfe.getPreferredMfas() : null;
-	   if (null == userOveriddenPreferredMethod) {
-		  final String mfaMethodFromConfig = getPreferredMFAMethod();
-		  if (null == mfe) {
-			log.debug("MFE is null - Returning Preferred Method: {}", mfaMethodFromConfig);
-		  } else {
-			log.debug("MFE is not null but no preferredMFA - Returning Preferred Method: {}", mfaMethodFromConfig);
-		  }
-		  return mfaMethodFromConfig;
-	   }
-	   log.debug("Returning UserOveriddenPreferredMethod: {}", userOveriddenPreferredMethod);
-	   return userOveriddenPreferredMethod;
-	}
-
-	
-	public String getPreferredMFAMethod(UserI user) {
-		MultifactorEntity mfe = _mfaService.getMultifactorAuth(user.getUsername());	
-		return getPreferredMFAMethod(mfe);
-	}
 	
 	@Autowired
 	private final MFAPreferences _pref;
 	
 	@Autowired
 	private final SiteConfigPreferences _siteConfig;
-
-	@Autowired
-	private final MultifactorAuthenticationService _mfaService;
 
 }
