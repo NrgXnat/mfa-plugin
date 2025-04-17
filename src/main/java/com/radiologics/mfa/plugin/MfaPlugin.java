@@ -3,16 +3,15 @@
 //Author: Mohana Ramaratnam <mohana@radiologics.com>
 package com.radiologics.mfa.plugin;
 
+import com.radiologics.mfa.strategy.impl.EmailAuthenticationStrategy;
+import com.radiologics.mfa.strategy.impl.GoogleAuthenticatorStrategy;
+import com.radiologics.mfa.strategy.impl.SMSAuthenticationStrategy;
+import lombok.extern.slf4j.Slf4j;
 import org.nrg.framework.annotations.XnatPlugin;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.PropertySource;
-import com.radiologics.mfa.helper.MFAPreferences;
-import com.radiologics.mfa.strategy.impl.EmailAuthenticationStrategy;
-import com.radiologics.mfa.strategy.impl.GoogleAuthenticatorStrategy;
-import com.radiologics.mfa.strategy.impl.SMSAuthenticationStrategy;
-import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
@@ -21,19 +20,11 @@ import lombok.extern.slf4j.Slf4j;
 			description = "Adds multi-factor authentication support to XNAT.",
 			logConfigurationFile = "META-INF/resources/mfa-logback.xml",
 			entityPackages = { "com.radiologics.mfa.entities" })
-@ComponentScan({"com.radiologics.mfa.dao", "com.radiologics.mfa.helper",
+@ComponentScan({"com.radiologics.mfa.dao", "com.radiologics.mfa.preference",
 				"com.radiologics.mfa.api", "com.radiologics.mfa.security",
 				"com.radiologics.mfa.services", "com.radiologics.mfa.filter"})
 public class MfaPlugin { 
-	
-	@Bean
-	MFAPreferences mfaPreferences(@Value("${mfa.preferred}") String mfaPreferred, @Value("${mfa.redirectPath}") String redirectPath) {
-		final MFAPreferences preferences = new MFAPreferences();
-		preferences.setAutoPreferredMFAStrategy(mfaPreferred);
-		preferences.setMfaRedirectPath(redirectPath);
-		return preferences;
-	}
-	
+
 	@Bean
 	GoogleAuthenticatorStrategy googleAuthenticatorStrategy(@Value("${mfa.googleAuthenticator.qrCodeUrlTemplate}") String qrCodeUrlTemplate,
 															@Value("${mfa.googleAuthenticator.verificationPath}")  String verificationPath,

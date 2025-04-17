@@ -38,7 +38,7 @@ XNAT.app = getObject(XNAT.app || {});
 								        tag: 'input#authenticator-code.mfa-input|type="text"|size="11"|maxlength="6"'
 								    },
 								    mfaSubmit: {
-								        tag: 'button#mfa-login-btn.btn.btn1.mfa-input|type="button"',
+								        tag: 'button#mfa-login-btn.btn.btn1.mfa-input|type="submit"',
 								        contents: 'Verify'
 								    },
 //								    mfaReSend: {
@@ -50,8 +50,20 @@ XNAT.app = getObject(XNAT.app || {});
 								        contents : '<i class="fa fa-asterisk"></i><span id="error-msg"></span>'
 								    }
 						        }
-					        }
-				        }
+					        },
+							emailVerify: {
+								tag: 'div',
+								contents: {
+									switchToEmail: {
+										tag: 'button#mfa-email-btn.btn.btn1|type="button"',
+										element: {
+											style: { margin: '0 0 2em' }
+										},
+										contents: 'Switch To Email'
+									}
+								}
+							}
+						}
 		            }
 		        }
 		    }
@@ -66,6 +78,12 @@ XNAT.app = getObject(XNAT.app || {});
                 $("a.mfa-verify-btn").click();
             }
         });
+		$("#mfa-email-btn").click(function(event) {
+			event.preventDefault();
+			XNAT.app.MultifactorAuth.switchToEmail();
+		});
+
+		XNAT.app.MultifactorAuth.renderSwitchEmailButton();
 
         $("#mfa-login-btn").click(function(){
             XNAT.app.MultifactorAuth.mfaLogin();

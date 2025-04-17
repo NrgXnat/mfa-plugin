@@ -1,0 +1,10 @@
+<div id="logo" align="center">#parse("/screens/Logo_Email.vm")</div>
+<div id="content">
+Dear Administrator:<br><br>
+<p>
+User $user is trying to use the email MFA to verify his account.
+</p>
+<br>
+The $system Team
+<a href="$server">$server</a>
+<a href="mailto:$contact_email">$contact_email</a>

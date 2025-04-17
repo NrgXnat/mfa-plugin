@@ -7,8 +7,10 @@ package com.radiologics.mfa.entities;
 import org.jboss.aerogear.security.otp.api.Base32;
 import org.nrg.framework.orm.hibernate.AbstractHibernateEntity;
 
-import javax.persistence.*;
-import java.util.Date;
+import javax.persistence.Access;
+import javax.persistence.AccessType;
+import javax.persistence.Column;
+import javax.persistence.Entity;
 
 @Entity
 @Access(AccessType.FIELD)
@@ -22,6 +24,7 @@ public class MultifactorEntity extends AbstractHibernateEntity{
 	private boolean  mfaRegistered = false;
 	private boolean  mfaExempted = false;
 	private String   preferredMfas;
+	private String   tempPreferredMfaBackup;
 	
 	public MultifactorEntity() { }
 
@@ -99,8 +102,14 @@ public class MultifactorEntity extends AbstractHibernateEntity{
 		return "[" + pMFAAsJsonArray + "]";
 	}
 
+	public String getTempPreferredMfaBackup() {
+		return tempPreferredMfaBackup;
+	}
 
-	
+	public void setTempPreferredMfaBackup(String tempPreferredMfaBackup) {
+		this.tempPreferredMfaBackup = tempPreferredMfaBackup;
+	}
+
 	/**
 	 * @param preferredMfa the preferredMfa to set
 	 */

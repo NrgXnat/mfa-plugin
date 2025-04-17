@@ -1,0 +1,1 @@
+<script src="$content.getURI("/scripts/mfa/qrcode.min.js")"></script>

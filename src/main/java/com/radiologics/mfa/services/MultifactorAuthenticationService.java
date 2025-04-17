@@ -4,7 +4,10 @@
 package com.radiologics.mfa.services;
 
 import com.radiologics.mfa.entities.MultifactorEntity;
-import com.radiologics.mfa.exception.*;
+import com.radiologics.mfa.exception.MFACodeSendFailedException;
+import com.radiologics.mfa.exception.MFAStrategyNotFoundException;
+import com.radiologics.mfa.exception.MFAUserExemptException;
+import com.radiologics.mfa.exception.MFAUserNotFoundException;
 import com.radiologics.mfa.model.MfaModel;
 import com.radiologics.mfa.principal.PrincipalContactInformation;
 import com.radiologics.mfa.strategy.MFAStrategyI;
@@ -33,4 +36,6 @@ public interface MultifactorAuthenticationService extends BaseHibernateService<M
 	String getPreferredMFAMethod(UserI user);
 	String getPreferredMFAMethod(String username);
 	String getPreferredMFAMethod(MultifactorEntity mfe);
+	MultifactorEntity createMfe(String username);
+
 }

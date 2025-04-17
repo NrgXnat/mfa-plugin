@@ -17,13 +17,13 @@ preferredSiteMfa:
 exemptedSettings:
     kind: panel
     name: exemptedSettings
-    label: "Exempted Users"
+    label: "Exempt or Reset Users from MFA"
     contents:
         info:
             tag: p
             element:
                 style: "margin: 15px 0 30px"
-            contents: Use the table below to exempt users from MFA
+            contents: Use the table below to exempt or reset users from MFA
         config:
             tag: div#mfa-exempt-users.data-table-container #dont change, see multifactorAuth-siteAdmin.js
             

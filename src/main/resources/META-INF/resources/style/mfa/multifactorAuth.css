@@ -12,7 +12,9 @@ div#mfa-login-container{
 #authenticator-qr{
 	margin: 1em;
 }
-
+#authenticator-qr img{
+    margin-left: 10em;
+}
 div.mfa-login-box{
     background-color: #f0f0f0;
     border: 1px solid #ccc;

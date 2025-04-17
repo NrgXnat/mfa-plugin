@@ -34,6 +34,11 @@ XNAT.app = getObject(XNAT.app || {});
                 XNAT.app.MultifactorAuth.toggleError("Invalid Token");
             });
         },
+        switchToEmail: function () {
+            $.post( { url : serverRoot+'/xapi/mfa/switch_to_email?XNAT_CSRF='+csrfToken}).done(function(res){
+                window.location=serverRoot+"/app/template/index.vm";
+            });
+        },
         renderGoogleAuthSetup:function(){
             XNAT.app.MultifactorAuth.getMfaStatus().done( function(auth, statusText, xhr){
                 var status = xhr.status;
@@ -41,7 +46,7 @@ XNAT.app = getObject(XNAT.app || {});
                     XNAT.app.MultifactorAuth.isMfaRequired = !auth.mfaExempted;
                     if (auth.mfaNeedsDeviceRegistration ) {
                         if (!auth.mfaRegistered ) {
-                            $("#authenticator-qr").attr('src', auth.qrCodeUrl);
+                            new QRCode(document.getElementById("authenticator-qr"), auth.qrCodeUrl);
                             $("#authenticator-secret").text(auth.secret.replace(/(.{4})/g, '$1 '));
                             $("#authenticator-setup").show();
                         }else {
@@ -59,6 +64,15 @@ XNAT.app = getObject(XNAT.app || {});
                 }
             }).fail(function(){
                 xmodal.message("Error","Unable to retrieve Multifactor Authetentication config. Please contact your System Administrator.");
+            });
+        },
+
+        renderSwitchEmailButton:function(){
+            XNAT.app.MultifactorAuth.getEmailBackup().done(function(flag){
+                console.log(flag);
+                if (!flag['emailBackupEnabled']){
+                    $("#mfa-email-btn").hide();
+                }
             });
         },
         renderUserProfile:function(){
@@ -133,6 +147,9 @@ XNAT.app = getObject(XNAT.app || {});
         },
         getMfaStatus:function(){
             return $.get( { url : serverRoot+'/xapi/mfa/status?XNAT_CSRF='+csrfToken});
+        },
+        getEmailBackup:function(){
+            return $.get({url : serverRoot+'/xapi/mfa/preference?XNAT_CSRF='+csrfToken});
         },
         verifyToken:function(token){
             return $.ajax(serverRoot + '/xapi/mfa/verify?XNAT_CSRF=' + csrfToken, {

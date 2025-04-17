@@ -2,7 +2,7 @@
 $!data.getTemplateInfo().setLayoutTemplate("Noninteractive.vm")
 <script type="text/javascript" src="/scripts/mfa/multifactorAuth.js"></script>
 <div id="mfa-login-container">
-<h2>Multifactor Authentication using Google Authenticator Required</h2>
+<h2>MFA using Google Authenticator</h2>
 </div>
 
 <script type="text/javascript">
@@ -29,7 +29,7 @@ $(document).ready(function() {
 				tag:'div#authenticator-secret'
 			},
 			authenticatorQR: {
-				tag:'img#authenticator-qr'
+				tag:'div#authenticator-qr'
 			},
 			authenticatorVerify: {
 				tag: 'div#authenticator-verify',
@@ -37,10 +37,22 @@ $(document).ready(function() {
 					'<input type="text" id="authenticator-code" size="11" maxlength="6"></input>' + 
 					'<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" onclick="XNAT.app.MultifactorAuth.mfaLogin()" href="#!">Verify Code</a>' + 
 					'<span id="mfa-error"><i class="fa fa-asterisk"></i><span id="error-msg"></span></span>' 
+			},
+			switchToEmail: {
+				tag: 'button#mfa-email-btn.btn.btn1|type="button"',
+				element: {
+					style: { margin: '0 0 2em' }
+				},
+				contents: 'Switch To Email'
 			}
 		}
 	}
 	XNAT.spawner.spawn({multifactorAuthPanel}).render($("div#mfa-login-container"));
 	XNAT.app.MultifactorAuth.renderGoogleAuthSetup();
+	XNAT.app.MultifactorAuth.renderSwitchEmailButton();
+	$("#mfa-email-btn").click(function(event) {
+		event.preventDefault();
+		XNAT.app.MultifactorAuth.switchToEmail();
+	});
 });
 </script>

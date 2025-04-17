@@ -5,7 +5,7 @@ package com.radiologics.mfa.filter;
 
 import com.radiologics.mfa.entities.MultifactorEntity;
 import com.radiologics.mfa.exception.MFAStrategyNotFoundException;
-import com.radiologics.mfa.helper.MFAPreferences;
+import com.radiologics.mfa.preference.MFAPreferences;
 import com.radiologics.mfa.services.MultifactorAuthenticationService;
 import com.radiologics.mfa.strategy.MFAStrategyI;
 import com.radiologics.mfa.utils.MFAConstants;
@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
 import org.nrg.xdat.XDAT;
 import org.nrg.xdat.entities.AliasToken;
-import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.nrg.xdat.services.AliasTokenService;
 import org.nrg.xft.security.UserI;
 import org.springframework.security.crypto.codec.Base64;
@@ -33,175 +32,181 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 @Component
 public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
-	private final AliasTokenService                aliasTokenService;
-	private final SiteConfigPreferences            siteConfigPreferences;
-	private final MultifactorAuthenticationService multifactorAuthenticationService;
-	private final MFAPreferences                   mfaPreferences;
+    private final AliasTokenService aliasTokenService;
+    private final MultifactorAuthenticationService multifactorAuthenticationService;
+    private final MFAPreferences mfaPreferences;
 
-	public MultifactorAuthenticationFilter(final MultifactorAuthenticationService multifactorAuthenticationService,
-										   final MFAPreferences mfaPreferences,
-										   final AliasTokenService aliasTokenService,
-										   final SiteConfigPreferences siteConfigPreferences){
-		this.multifactorAuthenticationService = multifactorAuthenticationService;
-		this.aliasTokenService                = aliasTokenService;
-		this.siteConfigPreferences            = siteConfigPreferences;
-		this.mfaPreferences                   = mfaPreferences;
-	}
+    public MultifactorAuthenticationFilter(final MultifactorAuthenticationService multifactorAuthenticationService,
+                                           final MFAPreferences mfaPreferences,
+                                           final AliasTokenService aliasTokenService) {
+        this.multifactorAuthenticationService = multifactorAuthenticationService;
+        this.aliasTokenService = aliasTokenService;
+        this.mfaPreferences = mfaPreferences;
+    }
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-		final HttpSession httpSession = request.getSession(false);
-		if(null == httpSession){
-			filterChain.doFilter(request, response);
-			return;
-		}
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        final HttpSession httpSession = request.getSession(false);
+        if (null == httpSession) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		final UserI       user                = XDAT.getUserDetails();
-		final Object      mfaTokenVerified    = httpSession.getAttribute(MFAConstants.MFA_TOKEN_VERIFIED);
-		final Boolean     mfaTokenSent        = (Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_SENT);
-		final String      requestUri          = request.getRequestURI();
-		final String      shortUri            = requestUri.contains("?") ? requestUri.substring(0, requestUri.indexOf("?")) : requestUri;
-		final String      site_preferred_mfa  = siteConfigPreferences.getValue(MFAConstants.MFA_PREFERRED);
-		final boolean     mfaRequired         = multifactorAuthenticationService.isMFARequired(user.getUsername());
+        final UserI user = XDAT.getUserDetails();
+        final Object mfaTokenVerified = httpSession.getAttribute(MFAConstants.MFA_TOKEN_VERIFIED);
+        final Boolean mfaTokenSent = (Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_SENT);
+        final String requestUri = request.getRequestURI();
+        final String shortUri = requestUri.contains("?") ? requestUri.substring(0, requestUri.indexOf("?")) : requestUri;
+        final boolean mfaRequired = multifactorAuthenticationService.isMFARequired(user.getUsername());
+        final Object emailBackup = httpSession.getAttribute("EmailBackup");
 
-		log.debug("MultifactorAuthenticationFilter.doFilterInternal(): shortUri: {}, mfaRequired: {}, mfaTokenVerified: {}, userLogin: {}",
-						shortUri,  mfaRequired, mfaTokenVerified, user.getLogin());
+        log.debug("MultifactorAuthenticationFilter.doFilterInternal(): shortUri: {}, mfaRequired: {}, mfaTokenVerified: {}, userLogin: {}",
+                shortUri, mfaRequired, mfaTokenVerified, user.getLogin());
 
-		if(isAliasToken(request)){
-			// Requests using an alias token should bypass MFA.
-			// Set the token as verified here even though it isn't. This way they wont get blocked if they
-			// request a jsessionid using an alias token and then try to pass the cookie in subsequent requests.
-			httpSession.setAttribute(MFAConstants.MFA_TOKEN_VERIFIED, true);
-			filterChain.doFilter(request, response);
-			return;
-		}
+        if (isAliasToken(request)) {
+            // Requests using an alias token should bypass MFA.
+            // Set the token as verified here even though it isn't. This way they wont get blocked if they
+            // request a jsessionid using an alias token and then try to pass the cookie in subsequent requests.
+            httpSession.setAttribute(MFAConstants.MFA_TOKEN_VERIFIED, true);
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		// Let them in if the token has been verified
-		if(!mfaRequired || BooleanUtils.toBoolean((Boolean) mfaTokenVerified)){
-			filterChain.doFilter(request, response);
-			return;
-		}
-		
-		MFAStrategyI mfaStrategy;
-		try {
-		   mfaStrategy = multifactorAuthenticationService.getPreferredMFAStrategy(user.getUsername());
-		}catch(MFAStrategyNotFoundException e) {
-			log.error("Failed to retrieve mfaStrategy for user: {}.", user.getUsername(), e);
-			return;
-		}
+        // Let them in if the token has been verified
+        if (!mfaRequired || BooleanUtils.toBoolean((Boolean) mfaTokenVerified)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		if(user.isGuest()){
-			if(!shortUri.equals("/xapi/mfa/verify") && !shortUri.equals("/xapi/mfa") &&
-					!shortUri.equals("/xapi/mfa/exempt") && (shortUri.equals(mfaStrategy.getRegistrationTemplatePath()) ||
-						shortUri.equals(mfaStrategy.getVerificationTemplatePath()))) {
-				response.sendRedirect(mfaPreferences.getMfaRedirectPath());
-				return;
-			}
-			filterChain.doFilter(request, response);
-			return;
-		}
+        MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(user.getUsername());
+        if (null == mfe) {
+            mfe = multifactorAuthenticationService.createMfe(user.getUsername());
+        }
 
-		// Always allow these requests if they have logged in
-		if(isUriAllowed(shortUri)){
-			filterChain.doFilter(request, response);
-			return;
-		}
+        MFAStrategyI mfaStrategy;
+        try {
+            if (emailBackup == null) {
+                String tempPreferredMfaBackup = mfe.getTempPreferredMfaBackup();
+                if (tempPreferredMfaBackup != null) {
+                    mfe.setPreferredMfas(tempPreferredMfaBackup);
+                    mfe.setTempPreferredMfaBackup(null);
+                    multifactorAuthenticationService.update(mfe);
+                }
+            }
+            mfaStrategy = multifactorAuthenticationService.getPreferredMFAStrategy(user.getUsername());
+        } catch (MFAStrategyNotFoundException e) {
+            log.error("Failed to retrieve mfaStrategy for user: {}.", user.getUsername(), e);
+            return;
+        }
 
-		MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(user.getUsername());
-		if (null == mfe) {
-			mfe = new MultifactorEntity(user.getUsername());
-			mfe.setMfaRegistered(false);
-			mfe.setMfaExempted(false);
-			mfe.setPreferredMfas(site_preferred_mfa);
-			multifactorAuthenticationService.create(mfe);
-		}
+        if (user.isGuest()) {
+            if (!shortUri.equals("/xapi/mfa/verify") && !shortUri.equals("/xapi/mfa") &&
+                    !shortUri.equals("/xapi/mfa/exempt") && (shortUri.equals(mfaStrategy.getRegistrationTemplatePath()) ||
+                    shortUri.equals(mfaStrategy.getVerificationTemplatePath()))) {
+                response.sendRedirect(mfaPreferences.getMfaRedirectPath());
+                return;
+            }
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		if (BooleanUtils.toBooleanDefaultIfNull(mfe.isMfaExempted(),false)) {
-			filterChain.doFilter(request, response);
-			return;
-		}
+        // Always allow these requests if they have logged in
+        if (isUriAllowed(shortUri)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		log.debug("MFA Registered for this user: {}", user.getUsername());
-		if (mfaStrategy.needsRegistration() && !mfe.isMfaRegistered()) {
-			if (shortUri.equals(mfaStrategy.getRegistrationTemplatePath())) {
-				filterChain.doFilter(request, response);
-			}else {
-				response.sendRedirect(mfaStrategy.getRegistrationTemplatePath());
-			}
-			return;
-		}
+        if (BooleanUtils.toBooleanDefaultIfNull(mfe.isMfaExempted(), false)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-		if(mfe.isMfaRegistered() || !mfaStrategy.needsRegistration()) {
-			try{
-				if (!BooleanUtils.toBooleanDefaultIfNull(mfaTokenSent,false)) {
-					multifactorAuthenticationService.sendCode(user);
-					httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, true);
-				}
-			}catch(Exception e) {
-				log.error("Failed to send MFA Token to user: {}. {}", user.getUsername(), e.getMessage(), e);
-				return;
-			}
+        log.debug("MFA Registered for this user: {}", user.getUsername());
+        if (mfaStrategy.needsRegistration() && !mfe.isMfaRegistered()) {
+            if (shortUri.equals(mfaStrategy.getRegistrationTemplatePath())) {
+                filterChain.doFilter(request, response);
+            } else {
+                response.sendRedirect(mfaStrategy.getRegistrationTemplatePath());
+            }
+            return;
+        }
 
-			log.debug("Redirecting to the verification page for the strategy: {}", mfaStrategy.getVerificationTemplatePath());
-			// Let them go to the "Verify Token" page
-			if(shortUri.equals(mfaStrategy.getVerificationTemplatePath())) {
-				filterChain.doFilter(request, response);
-				return;
-			}
+        if (mfe.isMfaRegistered() || !mfaStrategy.needsRegistration()) {
+            try {
+                if (!BooleanUtils.toBooleanDefaultIfNull(mfaTokenSent, false)) {
+                    multifactorAuthenticationService.sendCode(user);
+                    httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, true);
+                }
+            } catch (Exception e) {
+                log.error("Failed to send MFA Token to user: {}. {}", user.getUsername(), e.getMessage(), e);
+                return;
+            }
 
-			// If mfaVerified has not been set we need to prompt for the token.
-			if(null == mfaTokenVerified) {
-				response.sendRedirect(mfaStrategy.getVerificationTemplatePath());
-			}
-		// MFA is disabled for this user but the site requires MFA to be enabled
-		}else {
-			// Let them go to the Registration page if MFA is required.
-			//Find the preferred MFA for the user. If a registration is required,
-			//user should be redirected to Registration Page.
-			//Each MFA Strategy would have their own Registration Page (if they need one)
-			if(mfaStrategy.needsRegistration() && shortUri.equals(mfaStrategy.getRegistrationTemplatePath())) {
-				filterChain.doFilter(request, response);
-				return;
-			}
+            log.debug("Redirecting to the verification page for the strategy: {}", mfaStrategy.getVerificationTemplatePath());
+            // Let them go to the "Verify Token" page
+            if (shortUri.equals(mfaStrategy.getVerificationTemplatePath())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-			// Only let the user get the mfa config when mfaTokenVerified and mfaEnabled are false && requireMFA is true
-			// (i.e. When MFA is required and the user has just logged in and are setting up MFA)
-			// This is the only time someone should be seeing the secret key when they aren't fully authenticated with MFA.
-			if(shortUri.equals("/xapi/mfa")){
-				filterChain.doFilter(request, response);
-				return;
-			}
+            // If mfaVerified has not been set we need to prompt for the token.
+            if (null == mfaTokenVerified) {
+                response.sendRedirect(mfaStrategy.getVerificationTemplatePath());
+            }
+            // MFA is disabled for this user but the site requires MFA to be enabled
+        } else {
+            // Let them go to the Registration page if MFA is required.
+            //Find the preferred MFA for the user. If a registration is required,
+            //user should be redirected to Registration Page.
+            //Each MFA Strategy would have their own Registration Page (if they need one)
+            if (mfaStrategy.needsRegistration() && shortUri.equals(mfaStrategy.getRegistrationTemplatePath())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-			if (mfaStrategy.needsRegistration()){
-				response.sendRedirect(mfaStrategy.getRegistrationTemplatePath());
-				return;
-			}
-			response.sendRedirect(mfaPreferences.getMfaRedirectPath());
-		}
-	}
+            // Only let the user get the mfa config when mfaTokenVerified and mfaEnabled are false && requireMFA is true
+            // (i.e. When MFA is required and the user has just logged in and are setting up MFA)
+            // This is the only time someone should be seeing the secret key when they aren't fully authenticated with MFA.
+            if (shortUri.equals("/xapi/mfa")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
-	private boolean isAliasToken(HttpServletRequest request){
-		final String header = request.getHeader("Authorization");
-		if (header != null && header.startsWith("Basic ")) {
-			final String[] atoms = new String(Base64.decode(header.substring(6).getBytes(UTF_8)), UTF_8).split(":");
-			if (AliasToken.isAliasFormat(atoms[0])) {
-				final AliasToken alias = aliasTokenService.locateToken(atoms[0]);
-				if (alias != null) {
-					// We don't care if the token is actually valid at this time.
-					return true;
-				}
-			}
-		}
-		return false;
-	}
+            if (mfaStrategy.needsRegistration()) {
+                response.sendRedirect(mfaStrategy.getRegistrationTemplatePath());
+                return;
+            }
+            response.sendRedirect(mfaPreferences.getMfaRedirectPath());
+        }
+    }
 
-	private boolean isUriAllowed(String uri){
-		return  uri.equals("/xapi/mfa/verify") || uri.equals("/scripts/mfa/multifactorAuth.js") ||
-				uri.equals("/scripts/mfa/mfaEmailAuth.js") ||
-				uri.equals("/scripts/mfa/mfaGoogleAuth.js") ||
-				uri.equals("/style/mfa/multifactorAuth.css") ||
-				uri.equals("/style/font-awesome.css") ||
-				uri.equals("/xapi/mfa/status") ||
-				uri.equals("/xapi/mfa/send_code");
-	}
+    private boolean isAliasToken(HttpServletRequest request) {
+        final String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Basic ")) {
+            final String[] atoms = new String(Base64.decode(header.substring(6).getBytes(UTF_8)), UTF_8).split(":");
+            if (AliasToken.isAliasFormat(atoms[0])) {
+                final AliasToken alias = aliasTokenService.locateToken(atoms[0]);
+                if (alias != null) {
+                    // We don't care if the token is actually valid at this time.
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isUriAllowed(String uri) {
+        return uri.equals("/xapi/mfa/verify") ||
+                uri.equals("/scripts/mfa/multifactorAuth.js") ||
+                uri.equals("/scripts/mfa/mfaEmailAuth.js") ||
+                uri.equals("/scripts/mfa/mfaGoogleAuth.js") ||
+                uri.equals("/scripts/mfa/qrcode.min.js") ||
+                uri.equals("/style/mfa/multifactorAuth.css") ||
+                uri.equals("/style/font-awesome.css") ||
+                uri.equals("/xapi/mfa/status") ||
+                uri.equals("/xapi/mfa/emailbackup") ||
+                uri.equals("/xapi/mfa/preference") ||
+                uri.equals("/xapi/mfa/switch_to_email") ||
+                uri.equals("/xapi/mfa/send_code");
+    }
 }

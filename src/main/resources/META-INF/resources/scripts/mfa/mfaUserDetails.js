@@ -51,6 +51,28 @@ XNAT.app = getObject(XNAT.app || {});
                                 },
                             }
                         },
+                        registeredMfa:{
+                            tag: "div.mfa-setting",
+                            contents: {
+                                registeredSwitch: {
+                                    tag: "div",
+                                    contents: {
+                                        mfaRegisteredUser: {
+                                            kind: "panel.input.switchbox",
+                                            label: "MFA Registered: ",
+                                            id: "registered-mfa-user",
+                                            disabled: true,
+                                            onText: "Registered",
+                                            offText: "Not Registered",
+                                        }
+                                    }
+                                },
+                                registeredDescription: {
+                                    tag: "div.description",
+                                    contents: "If user has registered for MFA authentication."
+                                },
+                            }
+                        },
                         mfaMethod: {
                             tag: "div.mfa-setting",
                             contents: {
@@ -94,6 +116,7 @@ XNAT.app = getObject(XNAT.app || {});
 
             XNAT.app.mfa.userDetails.toggleMessage();
             $("#exempt-mfa-user").checked(mfaObj.mfaExempted);
+            $("#registered-mfa-user").checked(mfaObj.mfaRegistered);
 
             XNAT.xhr.get( { url :  XNAT.url.csrfUrl('/xapi/mfa/methods') }).done(function(methods, statusText, xhr){
                 XNAT.app.mfa.userDetails.initMethods(methods, mfaObj.mfaPreferred)

@@ -11,11 +11,9 @@ import com.amazonaws.services.sns.model.MessageAttributeValue;
 import com.amazonaws.services.sns.model.PublishRequest;
 import com.amazonaws.services.sns.model.PublishResult;
 import com.google.common.collect.Maps;
-import com.radiologics.mfa.annotation.MFAHandler;
 import com.radiologics.mfa.entities.MultifactorEntity;
 import com.radiologics.mfa.principal.PrincipalContactInformation;
 import com.radiologics.mfa.strategy.MFAStrategyI;
-import com.radiologics.mfa.strategy.impl.AbstractMFAStrategy;
 import com.radiologics.mfa.utils.MFAConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.velocity.VelocityContext;
@@ -28,7 +26,6 @@ import org.nrg.xdat.turbine.utils.TurbineUtils;
 import java.util.Map;
 
 @Slf4j
-@MFAHandler(handler="SMS")
 public class SMSAuthenticationStrategy extends AbstractMFAStrategy implements MFAStrategyI {
 
 	public String getRegistrationTemplatePath() {

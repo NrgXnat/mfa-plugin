@@ -15,6 +15,5 @@ public class MfaModel {
     private Boolean mfaNeedsDeviceRegistration;
     private Boolean mfaRegistered;
     private String mfaPreferred;
-    private String secret;
     private String qrCodeUrl;
 }
