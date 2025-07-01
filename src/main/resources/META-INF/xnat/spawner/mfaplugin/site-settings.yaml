@@ -10,7 +10,7 @@ preferredSiteMfa:
     label: "MFA for all users"
     contents:
         tableCss:
-            tag: link|rel="stylesheet"|type="text/css"|href="/scripts/xnat/app/scanTable/scanTable.css"
+            tag: link|rel="stylesheet"|type="text/css"|href="~/scripts/xnat/app/scanTable/scanTable.css"
         config:
             tag: div#preferredSiteMfa-manager #dont change, see multifactorAuth-siteAdmin.js
 

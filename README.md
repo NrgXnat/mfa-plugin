@@ -53,7 +53,7 @@ For scripted interactions with XNAT, use service accounts exempted from MFA or r
 
 ### Building the jar ###
 
-`./gradlew clean fatJar`
+`./gradlew clean xnatPluginJar`
 
 
 

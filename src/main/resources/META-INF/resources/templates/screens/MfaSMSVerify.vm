@@ -1,6 +1,8 @@
 #set($disabled=true)
 $!data.getTemplateInfo().setLayoutTemplate("Noninteractive.vm")
-<script type="text/javascript" src="/scripts/mfa/multifactorAuth.js"></script>
+<script type="text/javascript" src="$content.getURI("/scripts/mfa/multifactorAuth.js")"></script>
+<link ref="stylesheet" type="text/css" href="$content.getURI("/style/mfa/multifactorAuthUserProfile.css")" />
+
 <div id="mfa-login-container"></div>
 
 <script type="text/javascript">
@@ -9,9 +11,6 @@ $!data.getTemplateInfo().setLayoutTemplate("Noninteractive.vm")
 		var multifactorAuthPanel = {
 				tag: 'div.mfa-login-box',
 				contents:{
-					mfaStyleSheet: {
-						tag: 'link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuth.css'
-					},
 					mfaHeader: {
 						tag: 'div',
 						contents: '<h2>SMS based Multifactor Authentication</h2>'
