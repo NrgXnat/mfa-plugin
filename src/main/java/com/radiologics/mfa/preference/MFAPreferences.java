@@ -15,6 +15,7 @@ import org.nrg.prefs.annotations.NrgPreferenceBean;
 import org.nrg.prefs.beans.AbstractPreferenceBean;
 import org.nrg.prefs.exceptions.InvalidPreferenceName;
 import org.nrg.prefs.services.NrgPreferenceService;
+import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
@@ -27,10 +28,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class MFAPreferences extends AbstractPreferenceBean {
     public static final String MFA_TOOL_ID = "multifactor-auth";
     public static final String INITIALIZED = "initialized";
+    private SiteConfigPreferences siteConfigPreferences;
 
     @Autowired
-    protected MFAPreferences(final NrgPreferenceService preferenceService, ConfigPaths configFolderPaths, OrderedProperties initPrefs) {
+    protected MFAPreferences(
+            final NrgPreferenceService preferenceService,
+            ConfigPaths configFolderPaths,
+            OrderedProperties initPrefs,
+            SiteConfigPreferences siteConfigPreferences) {
         super(preferenceService, configFolderPaths, initPrefs);
+        this.siteConfigPreferences = siteConfigPreferences;
     }
 
     @NrgPreference(defaultValue = "false")
@@ -92,7 +99,7 @@ public class MFAPreferences extends AbstractPreferenceBean {
 
     @NrgPreference(property = "mfa.redirectPath")
     public String getMfaRedirectPath() {
-        return getValue("mfa.redirectPath");
+        return siteConfigPreferences.getSiteUrl()+getValue("mfa.redirectPath");
     }
 
     @NrgPreference(property = "mfa.preferred")

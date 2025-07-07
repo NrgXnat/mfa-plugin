@@ -18,7 +18,7 @@ XNAT.app = getObject(XNAT.app || {});
 				tag: 'div.mfa-login-box',
 				contents:{
 					mfaStyleSheet: {
-						tag: 'link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuth.css'
+						tag: `link|rel=stylesheet|type=text/css|href="~/style/mfa/multifactorAuth.css"`
 					},
 					mfaHeader: {
 						tag: 'div',

@@ -1,6 +1,6 @@
 #set($disabled=true)
 $!data.getTemplateInfo().setLayoutTemplate("Noninteractive.vm")
-<script type="text/javascript" src="/scripts/mfa/multifactorAuth.js"></script>
+<script type="text/javascript" src="$content.getURI("/scripts/mfa/multifactorAuth.js")"></script>
 <div id="mfa-login-container">
 <h2>MFA using Google Authenticator</h2>
 </div>
@@ -12,7 +12,7 @@ $(document).ready(function() {
 		tag: 'div',
 		contents:{
 			mfaStyleSheet: {
-				tag: 'link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuth.css'
+				tag: 'link|rel=stylesheet|type=text/css|href="~/style/mfa/multifactorAuth.css"'
 			},
 			authenticatorSetupHeader: {
 				tag: 'div#authenticator-setup',

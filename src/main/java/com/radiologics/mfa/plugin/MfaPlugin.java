@@ -8,6 +8,8 @@ import com.radiologics.mfa.strategy.impl.GoogleAuthenticatorStrategy;
 import com.radiologics.mfa.strategy.impl.SMSAuthenticationStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.nrg.framework.annotations.XnatPlugin;
+import org.nrg.xdat.preferences.SiteConfigPreferences;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -23,7 +25,16 @@ import org.springframework.context.annotation.PropertySource;
 @ComponentScan({"com.radiologics.mfa.dao", "com.radiologics.mfa.preference",
 				"com.radiologics.mfa.api", "com.radiologics.mfa.security",
 				"com.radiologics.mfa.services", "com.radiologics.mfa.filter"})
-public class MfaPlugin { 
+public class MfaPlugin {
+
+	private SiteConfigPreferences siteConfigPreferences;
+	private String siteUrl;
+
+	@Autowired
+	public MfaPlugin(SiteConfigPreferences siteConfigPreferences) {
+		this.siteConfigPreferences = siteConfigPreferences;
+		this.siteUrl = siteConfigPreferences.getSiteUrl();
+	}
 
 	@Bean
 	GoogleAuthenticatorStrategy googleAuthenticatorStrategy(@Value("${mfa.googleAuthenticator.qrCodeUrlTemplate}") String qrCodeUrlTemplate,
@@ -31,8 +42,8 @@ public class MfaPlugin {
 															@Value("${mfa.googleAuthenticator.registerPath}") String registerPath) {
 		final GoogleAuthenticatorStrategy googleAuthenticator = new GoogleAuthenticatorStrategy();
 		googleAuthenticator.setQrCodeUrlTemplate(qrCodeUrlTemplate);
-		googleAuthenticator.setVerificationTemplatePath(verificationPath);
-		googleAuthenticator.setRegistrationTemplatePath(registerPath);
+		googleAuthenticator.setVerificationTemplatePath(siteUrl+verificationPath);
+		googleAuthenticator.setRegistrationTemplatePath(siteUrl+registerPath);
 		return googleAuthenticator;
 	}
 
@@ -40,7 +51,7 @@ public class MfaPlugin {
 	EmailAuthenticationStrategy emailAuthenticationStrategy(@Value("${mfa.email.codeSentTextTemplate}") String codeSentEmailTemplate,
 															@Value("${mfa.email.verificationPath}")    String verificationPath) {
 		final EmailAuthenticationStrategy emailAuthenticationStrategy = new EmailAuthenticationStrategy();
-		emailAuthenticationStrategy.setVerificationTemplatePath(verificationPath);
+		emailAuthenticationStrategy.setVerificationTemplatePath(siteUrl+verificationPath);
 		emailAuthenticationStrategy.setEmailBodyTemplatePath(codeSentEmailTemplate);
 		return emailAuthenticationStrategy;
 	}
@@ -49,7 +60,7 @@ public class MfaPlugin {
 	SMSAuthenticationStrategy smsAuthenticationStrategy(@Value("${mfa.sms.codeSentTextTemplate}") String codeSentEmailTemplate,
 														@Value("${mfa.sms.verificationPath}")    String verificationPath) {
 		final SMSAuthenticationStrategy smsAuthenticationStrategy = new SMSAuthenticationStrategy();
-		smsAuthenticationStrategy.setVerificationTemplatePath(verificationPath);
+		smsAuthenticationStrategy.setVerificationTemplatePath(siteUrl+verificationPath);
 		smsAuthenticationStrategy.setSMSBodyTemplatePath(codeSentEmailTemplate);
 		return smsAuthenticationStrategy;
 	}

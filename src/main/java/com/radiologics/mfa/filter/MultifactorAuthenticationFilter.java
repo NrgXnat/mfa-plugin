@@ -11,6 +11,7 @@ import com.radiologics.mfa.strategy.MFAStrategyI;
 import com.radiologics.mfa.utils.MFAConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.nrg.xdat.XDAT;
 import org.nrg.xdat.entities.AliasToken;
 import org.nrg.xdat.services.AliasTokenService;
@@ -100,9 +101,9 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (user.isGuest()) {
-            if (!shortUri.equals("/xapi/mfa/verify") && !shortUri.equals("/xapi/mfa") &&
-                    !shortUri.equals("/xapi/mfa/exempt") && (shortUri.equals(mfaStrategy.getRegistrationTemplatePath()) ||
-                    shortUri.equals(mfaStrategy.getVerificationTemplatePath()))) {
+            if (!shortUri.endsWith("/xapi/mfa/verify") && !shortUri.endsWith("/xapi/mfa") &&
+                    !shortUri.endsWith("/xapi/mfa/exempt") && (mfaStrategy.getRegistrationTemplatePath().endsWith(shortUri)) ||
+                    mfaStrategy.getVerificationTemplatePath().endsWith(shortUri)) {
                 response.sendRedirect(mfaPreferences.getMfaRedirectPath());
                 return;
             }
@@ -123,7 +124,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
         log.debug("MFA Registered for this user: {}", user.getUsername());
         if (mfaStrategy.needsRegistration() && !mfe.isMfaRegistered()) {
-            if (shortUri.equals(mfaStrategy.getRegistrationTemplatePath())) {
+            if (mfaStrategy.getRegistrationTemplatePath().endsWith(shortUri)) {
                 filterChain.doFilter(request, response);
             } else {
                 response.sendRedirect(mfaStrategy.getRegistrationTemplatePath());
@@ -144,7 +145,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
             log.debug("Redirecting to the verification page for the strategy: {}", mfaStrategy.getVerificationTemplatePath());
             // Let them go to the "Verify Token" page
-            if (shortUri.equals(mfaStrategy.getVerificationTemplatePath())) {
+            if (mfaStrategy.getVerificationTemplatePath().endsWith(shortUri)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -167,7 +168,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             // Only let the user get the mfa config when mfaTokenVerified and mfaEnabled are false && requireMFA is true
             // (i.e. When MFA is required and the user has just logged in and are setting up MFA)
             // This is the only time someone should be seeing the secret key when they aren't fully authenticated with MFA.
-            if (shortUri.equals("/xapi/mfa")) {
+            if (shortUri.endsWith("/xapi/mfa")) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -196,17 +197,18 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isUriAllowed(String uri) {
-        return uri.equals("/xapi/mfa/verify") ||
-                uri.equals("/scripts/mfa/multifactorAuth.js") ||
-                uri.equals("/scripts/mfa/mfaEmailAuth.js") ||
-                uri.equals("/scripts/mfa/mfaGoogleAuth.js") ||
-                uri.equals("/scripts/mfa/qrcode.min.js") ||
-                uri.equals("/style/mfa/multifactorAuth.css") ||
-                uri.equals("/style/font-awesome.css") ||
-                uri.equals("/xapi/mfa/status") ||
-                uri.equals("/xapi/mfa/emailbackup") ||
-                uri.equals("/xapi/mfa/preference") ||
-                uri.equals("/xapi/mfa/switch_to_email") ||
-                uri.equals("/xapi/mfa/send_code");
+        return StringUtils.endsWithAny(uri,
+                "/xapi/mfa/verify",
+                "/scripts/mfa/multifactorAuth.js",
+                "/scripts/mfa/mfaEmailAuth.js",
+                "/scripts/mfa/mfaGoogleAuth.js",
+                "/scripts/mfa/qrcode.min.js",
+                "/style/mfa/multifactorAuth.css",
+                "/style/font-awesome.css",
+                "/xapi/mfa/status",
+                "/xapi/mfa/emailbackup",
+                "/xapi/mfa/preference",
+                "/xapi/mfa/switch_to_email",
+                "/xapi/mfa/send_code");
     }
 }
