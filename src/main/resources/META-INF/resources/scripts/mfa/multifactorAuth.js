@@ -46,8 +46,10 @@ XNAT.app = getObject(XNAT.app || {});
                     XNAT.app.MultifactorAuth.isMfaRequired = !auth.mfaExempted;
                     if (auth.mfaNeedsDeviceRegistration ) {
                         if (!auth.mfaRegistered ) {
-                            new QRCode(document.getElementById("authenticator-qr"), auth.qrCodeUrl);
-                            $("#authenticator-secret").text(auth.secret.replace(/(.{4})/g, '$1 '));
+                            new QRCode(document.getElementById("authenticator-qr-code"), auth.qrCodeUrl);
+                            // isolate the secret from a qrCode string otpauth://totp/LOCAL:username?secret=XXXXXXXXXXXXXXXX&issuer=LOCAL
+                            auth.secret = auth.qrCodeUrl.replace(/[=&]/g,',').split(',')[1];
+                            $("#authenticator-secret code").html(auth.secret.replace(/(.{4})/g, '$1 '));
                             $("#authenticator-setup").show();
                         }else {
                             $("#authenticator-setup").hide();

@@ -21,38 +21,27 @@ XNAT.app = getObject(XNAT.app || {});
 						tag: 'link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuth.css'
 					},
 					mfaHeader: {
-						tag: 'div',
-						contents: '<h2>Multi-factor Authentication</h2>'
+						tag: 'h2',
+						contents: 'Multi-factor Authentication'
 					},
-					multifactorLoginBox: {
-						tag: 'div',
-						contents: {
-							authenticatorVerify: {
-								tag: 'div',
-								contents: {
-								    mfaMessage: {
-								        tag: 'div.message',
-								        contents: 'An email with the verification code has been sent to your registered email. Enter your 6 digit verification code in the text box below.'
-								    },
-								    mfaCodeInput: {
-								        tag: 'input#authenticator-code.mfa-input|type="text"|size="11"|maxlength="6"'
-								    },
-								    mfaSubmit: {
-								        tag: 'button#mfa-login-btn.btn.btn1.mfa-input|type="button"',
-								        contents: 'Verify'
-								    },
-//								    mfaReSend: {
-//								        tag: 'button#mfa-resend-btn.btn.btn1.mfa-input|type="button"',
-//								        contents: 'Resend Code'
-//								    },
-								    mfaError: {
-								        tag: 'span#mfa-error',
-								        contents : '<i class="fa fa-asterisk"></i><span id="error-msg"></span>'
-								    }
-						        }
-					        }
-				        }
-		            }
+					mfaEmailMessage: {
+					    tag: 'div.message',
+                        contents: 'An email with the verification code has been sent to your registered email. Enter your 6 digit verification code in the text box below.'
+					},
+					authenticatorVerify: {
+                        tag: 'div#authenticator-verify',
+                        contents:
+                            '<p><strong>Enter code from Authenticator:</strong></p>' +
+                            '<p><input type="text" id="authenticator-code" size="6" maxlength="6" placeholder="888888" />' +
+                            '<span id="mfa-error"><i class="fa fa-exclamation-circle"></i>&nbsp;<span id="error-msg"></span></span></p>' +
+                            '<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" href="#!">Verify Code</a>'
+                    },
+                    authHelpMessage: {
+//                        tag: 'div#mfa-email-btn.auth-help.message',
+//                        contents:
+//                            'Problems authenticating? ' +
+//                            '<a href="#!">Resend email</a> or contact your site administrator'
+                    }
 		        }
 		    }
 

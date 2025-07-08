@@ -21,48 +21,30 @@ XNAT.app = getObject(XNAT.app || {});
 						tag: `link|rel=stylesheet|type=text/css|href="~/style/mfa/multifactorAuth.css"`
 					},
 					mfaHeader: {
-						tag: 'div',
-						contents: '<h2>Multi-factor Authentication</h2>'
+						tag: 'h2',
+						contents: 'Multi-factor Authentication'
 					},
+					mfaMessage: {
+                        tag: 'p',
+                        contents: 'Check your authenticator app for your 6 digit verification code and enter it in the text box below.'
+                    },
 					multifactorLoginBox: {
 						tag: 'div',
 						contents: {
 							authenticatorVerify: {
-								tag: 'div',
-								contents: {
-								    mfaMessage: {
-								        tag: 'div.message',
-								        contents: 'Check your authenticator app for your 6 digit verification code and enter it in the text box below.'
-								    },
-								    mfaCodeInput: {
-								        tag: 'input#authenticator-code.mfa-input|type="text"|size="11"|maxlength="6"'
-								    },
-								    mfaSubmit: {
-								        tag: 'button#mfa-login-btn.btn.btn1.mfa-input|type="submit"',
-								        contents: 'Verify'
-								    },
-//								    mfaReSend: {
-//								        tag: 'button#mfa-resend-btn.btn.btn1.mfa-input|type="button"',
-//								        contents: 'Email Code'
-//								    },
-								    mfaError: {
-								        tag: 'span#mfa-error',
-								        contents : '<i class="fa fa-asterisk"></i><span id="error-msg"></span>'
-								    }
-						        }
-					        },
-							emailVerify: {
-								tag: 'div',
-								contents: {
-									switchToEmail: {
-										tag: 'button#mfa-email-btn.btn.btn1|type="button"',
-										element: {
-											style: { margin: '0 0 2em' }
-										},
-										contents: 'Switch To Email'
-									}
-								}
-							}
+                                tag: 'div#authenticator-verify',
+                                contents:
+                                    '<p><strong>Enter code from Authenticator:</strong></p>' +
+                                    '<p><input type="text" id="authenticator-code" size="6" maxlength="6" placeholder="888888" />' +
+                                    '<span id="mfa-error"><i class="fa fa-exclamation-circle"></i>&nbsp;<span id="error-msg"></span></span></p>' +
+                                    '<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" onclick="XNAT.app.MultifactorAuth.mfaLogin()" href="#!">Verify Code</a>'
+                            },
+							authHelpMessage: {
+                                tag: 'div#mfa-email-btn.auth-help.message',
+                                contents:
+                                    'Problems authenticating? As a fallback, you can ' +
+                                    '<a href="#!" class="switch-to-email">receive an authentication code via email</a>'
+                            }
 						}
 		            }
 		        }
@@ -78,7 +60,7 @@ XNAT.app = getObject(XNAT.app || {});
                 $("a.mfa-verify-btn").click();
             }
         });
-		$("#mfa-email-btn").click(function(event) {
+		$(".switch-to-email").click(function(event) {
 			event.preventDefault();
 			XNAT.app.MultifactorAuth.switchToEmail();
 		});

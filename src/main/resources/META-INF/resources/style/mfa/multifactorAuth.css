@@ -1,23 +1,34 @@
-div#mfa-login-container{
-    text-align: center;
+#mfa-login-container{
     width:      50%;
     margin:     auto;
 }
 
 #authenticator-setup{
-    text-align: center;
-    margin:     auto;
+    margin: 0 0 2rem;
 }
 
-#authenticator-qr{
-	margin: 1em;
+#authenticator-qr {
+    display: inline-block;
+	margin-right: 3rem;
+	width: 256px;
 }
-#authenticator-qr img{
-    margin-left: 10em;
+#authenticator-qr-code img{
+    display: inline-block !important;
+    margin-bottom: 0.5rem;
+}
+#authenticator-qr code {
+    background-color: #e8e8e8;
+    letter-spacing: 10%;
+    padding: 0.5rem;
+}
+#authenticator-verify {
+    display: inline-block;
+    vertical-align: top;
+}
+.auth-help {
+    margin-top: 2rem;
 }
 div.mfa-login-box{
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
     padding: 20px;
 }
 
@@ -29,19 +40,18 @@ div.multifactor-enabled{
 span#mfa-error{
     display: none;
     color:   #c66;
-    position: absolute;
     margin-left: 6px;
     margin-top: 6px;
 }
 
 input#authenticator-code{
     font-family:    monospace;
-    font-size:      15px;
-    letter-spacing: 8px;
+    font-size:      30px;
+    letter-spacing: 20%;
 }
 
 input.error{
-  border: solid 1px #c66;
+    border: solid 1px #c66;
 }
 
 a.mfa-disable-btn{

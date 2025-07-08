@@ -16,41 +16,49 @@ $(document).ready(function() {
 			},
 			authenticatorSetupHeader: {
 				tag: 'div#authenticator-setup',
-				element: {
-					style: { margin: '0 0 2em' }
-				},
-				contents:
-					'<div class="message">' +
-					'This XNAT instance requires Multifactor Authentication to be enabled. Using the Google Authenticator App, either scan the QR code below or manually enter the 16 digit secret key. ' + 
-					'Then enter your 6 digit verification code in the text box below. ' +
-					'</div>'
-			},
-			authenticatorSecret: {
-				tag:'div#authenticator-secret'
+				contents: {
+				    authenticatorSetupMessage: {
+				        tag: 'p',
+                        contents:
+                            'This XNAT instance requires Multifactor Authentication to be enabled. ' +
+                            'Using the Google Authenticator App, either scan the QR code below or manually enter the 16 digit secret key. ' +
+                            'Then enter your 6 digit verification code in the text box below. '
+				    }
+				}
 			},
 			authenticatorQR: {
-				tag:'div#authenticator-qr'
+				tag:'div#authenticator-qr',
+				contents: {
+				    authenticatorQRCode: {
+				        tag: 'div#authenticator-qr-code'
+				    },
+				    authenticatorSecret: {
+                        tag:'div#authenticator-secret',
+                        contents:
+                            '<p><strong>Secret:</strong>&nbsp;<code></code></p>'
+                    }
+				}
 			},
 			authenticatorVerify: {
 				tag: 'div#authenticator-verify',
 				contents:
-					'<input type="text" id="authenticator-code" size="11" maxlength="6"></input>' + 
-					'<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" onclick="XNAT.app.MultifactorAuth.mfaLogin()" href="#!">Verify Code</a>' + 
-					'<span id="mfa-error"><i class="fa fa-asterisk"></i><span id="error-msg"></span></span>' 
+				    '<p><strong>Enter code from Authenticator:</strong></p>' +
+					'<p><input type="text" id="authenticator-code" size="6" maxlength="6" placeholder="888888" />' +
+					'<span id="mfa-error"><i class="fa fa-exclamation-circle"></i>&nbsp;<span id="error-msg"></span></span></p>' +
+					'<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" onclick="XNAT.app.MultifactorAuth.mfaLogin()" href="#!">Verify Code</a>'
 			},
-			switchToEmail: {
-				tag: 'button#mfa-email-btn.btn.btn1|type="button"',
-				element: {
-					style: { margin: '0 0 2em' }
-				},
-				contents: 'Switch To Email'
+			authHelpMessage: {
+			    tag: 'div#mfa-email-btn.auth-help.message',
+			    contents:
+			        'Problems authenticating? As a fallback, you can ' +
+			        '<a href="#!" class="switch-to-email">receive an authentication code via email</a>'
 			}
 		}
 	}
 	XNAT.spawner.spawn({multifactorAuthPanel}).render($("div#mfa-login-container"));
 	XNAT.app.MultifactorAuth.renderGoogleAuthSetup();
 	XNAT.app.MultifactorAuth.renderSwitchEmailButton();
-	$("#mfa-email-btn").click(function(event) {
+	$(".switch-to-email").click(function(event) {
 		event.preventDefault();
 		XNAT.app.MultifactorAuth.switchToEmail();
 	});
