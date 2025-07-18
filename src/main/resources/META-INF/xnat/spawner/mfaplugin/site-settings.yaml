@@ -2,37 +2,34 @@
 # Developer: James Ransford ransfordj@radiologics.com
 #            Mohana Ramaratnam (mohana@radiologics.com) 		
 
-preferredSiteMfa:
+preferredSiteMfaPanel:
     kind: panel.form
-    name: preferredSiteMfa
+    name: preferredSiteMfaPanel
     id: preferred-site-mfa
-    footer: false
-    label: "MFA for all users"
+    label: "MFA Preferences"
     contents:
-        tableCss:
-            tag: link|rel="stylesheet"|type="text/css"|href="/scripts/xnat/app/scanTable/scanTable.css"
         config:
             tag: div#preferredSiteMfa-manager #dont change, see multifactorAuth-siteAdmin.js
 
-exemptedSettings:
+mfaUserManagementPanel:
     kind: panel
-    name: exemptedSettings
-    label: "Exempt or Reset Users from MFA"
+    name: mfaUserManagementPanel
+    label: "Manage MFA for Site Users"
+    footer: false
     contents:
         info:
-            tag: p
+            tag: div.message
             element:
-                style: "margin: 15px 0 30px"
-            contents: Use the table below to exempt or reset users from MFA
+                style: "margin: 0 0 1rem"
+            contents: "Use the table below to exempt or reset users from MFA<br><br><button class='btn btn-sm reset-mfa-for-all-users'>Reset All Users to Default MFA Method</button>"
         config:
             tag: div#mfa-exempt-users.data-table-container #dont change, see multifactorAuth-siteAdmin.js
             
-mfaSettingsForm:
+mfaSettingsFormPanel:
     kind: panel.form
-    name: mfaSettingsForm
+    name: mfaSettingsFormPanel
     id: mfa-settings-form
-    footer: false
-    label: Multifactor Authentication Site Configuration
+    label: "MFA Site Configuration"
     contents:
         siteAdminScripts:
             tag: script|src="~/scripts/mfa/multifactorAuth-siteAdmin.js"
@@ -40,7 +37,7 @@ mfaSettingsForm:
             kind: panel.input.switchbox
             name: requireMfa
             id: requireMfa
-            label: Require MFA
+            label: Require MFA for Non-admins
             description: Require Multifactor Authentication to be enabled on all non admin accounts.
         require_admin_mfa:
             kind: panel.input.switchbox
@@ -57,9 +54,16 @@ mfaSettingsTab:
     label: MFA Settings
     group: mfaTabGroup
     contents:
-        ${mfaSettingsForm}
-        ${preferredSiteMfa}
-        ${exemptedSettings}
+        ${mfaSettingsFormPanel}
+        ${preferredSiteMfaPanel}
+
+mfaUserManagementTab:
+    kind: tab
+    name: mfaUserManagementTab
+    label: MFA User Management
+    group: mfaTabGroup
+    contents:
+        ${mfaUserManagementPanel}
 
 # Group these settings with other XNAT CR feature settings
 siteSettings:
@@ -71,4 +75,5 @@ siteSettings:
             mfaTabGroup: MFA Settings
     contains: tabs
     tabs: 
-          ${mfaSettingsTab}
+        ${mfaSettingsTab}
+        ${mfaUserManagementTab}

@@ -26,12 +26,13 @@ XNAT.app = getObject(XNAT.app || {});
 					},
 					mfaEmailMessage: {
 					    tag: 'div.message',
-                        contents: 'An email with the verification code has been sent to your registered email. Enter your 6 digit verification code in the text box below.'
+                        contents: 'An email with the verification code has been sent to your registered email. Enter your 6 digit verification code in the text box below.' +
+                            '<br><br>If you did not receive an email, please contact your site administrator'
 					},
 					authenticatorVerify: {
                         tag: 'div#authenticator-verify',
                         contents:
-                            '<p><strong>Enter code from Authenticator:</strong></p>' +
+                            '<p><strong>Enter OTP code from Email:</strong></p>' +
                             '<p><input type="text" id="authenticator-code" size="6" maxlength="6" placeholder="888888" />' +
                             '<span id="mfa-error"><i class="fa fa-exclamation-circle"></i>&nbsp;<span id="error-msg"></span></span></p>' +
                             '<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" href="#!">Verify Code</a>'

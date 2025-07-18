@@ -112,6 +112,10 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 	   return XNAT.url.restUrl('/xapi/mfa/'+user+'/unregister')
 	}
 
+	function setExemptStatusForUser(user,status) {
+	    return XNAT.url.csrfUrl('/xapi/mfa/exempt/'+user+'/'+status)
+	}
+
     function errorHandler(e, message){
         message = message ? message + '<br/><br/>' : '';
         var details = e.responseText ? spawn('p',[message, e.responseText]) : '';
@@ -136,32 +140,34 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 			$("#requireAdminMfa").prop("checked", false);
 		}
 
-	    mfaSiteConfig.container.append(spawn('div.pull-right button.btn.sm.save', {
-			                onclick: function(e){
-			                    e.preventDefault();
-								var requireMfaElt = document.getElementById('requireMfa');
-								var requireAdminMfaElt = document.getElementById('requireAdminMfa');
-								var requireMfaEltChecked = requireMfaElt.checked;
-								var requireAdminMfaEltChecked = requireAdminMfaElt.checked;
-								xmodal.loading.open({ title: 'Updating MFA Configuration'});
-								XNAT.xhr.post({
-									url: siteConfigMFAUrl('?requireMfa='+requireMfaEltChecked + '&requireAdminMfa=' + requireAdminMfaEltChecked),
-									async: false,
-									dataType: 'text',
-									success: function () {
-										xmodal.loading.close();
-										XNAT.dialog.closeAll();
-										XNAT.ui.banner.top(2000, 'Updated MFA Configuration', 'success');
-										location.reload();
-									},
-									error: function (e) {
-										xmodal.loading.close();
-										errorHandler(e);
-									}
-								});
-							}
-					}, 'Save'));
-
+	    mfaSiteConfig.container.parents('.panel').find('.panel-footer').empty().append(spawn('!',[
+	        spawn('div.pull-right button.btn.sm.save', {
+                onclick: function(e){
+                    e.preventDefault();
+                    var requireMfaElt = document.getElementById('requireMfa');
+                    var requireAdminMfaElt = document.getElementById('requireAdminMfa');
+                    var requireMfaEltChecked = requireMfaElt.checked;
+                    var requireAdminMfaEltChecked = requireAdminMfaElt.checked;
+                    xmodal.loading.open({ title: 'Updating MFA Configuration'});
+                    XNAT.xhr.post({
+                        url: siteConfigMFAUrl('?requireMfa='+requireMfaEltChecked + '&requireAdminMfa=' + requireAdminMfaEltChecked),
+                        async: false,
+                        dataType: 'text',
+                        success: function () {
+                            xmodal.loading.close();
+                            XNAT.dialog.closeAll();
+                            XNAT.ui.banner.top(2000, 'Updated MFA Configuration', 'success');
+                            location.reload();
+                        },
+                        error: function (e) {
+                            xmodal.loading.close();
+                            errorHandler(e);
+                        }
+                    });
+                }
+            }, 'Save'),
+            spawn('div.clearfix.clear')
+	    ]));
      };
 
   // get the list of available MFA Methods
@@ -220,93 +226,60 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 		});
 
 		mfaSiteManager.container.append(
-				spawn('mfa-settings-form', [
-                        XNAT.ui.panel.select.single({
-                            name: 'preferredMfaMethod',
-                            label: 'Preferred MFA Method',
-                            description: 'Select the site wide preferred MFA Method',
-                            options: mfaSiteManager.mfaMethodOptions
-                        }).element,
-						XNAT.ui.panel.input.switchbox({
-							name: 'enableMfaEmailBackup',
-							id: 'enableMfaEmailBackup',
-							label: 'Always allow email as backup MFA option',
-							description: 'User can choose email as the MFA method during login'
-						}).element,
-						XNAT.ui.panel.input.switchbox({
-							name: 'mfaAdminEmailNotification',
-							id: 'mfaAdminEmailNotification',
-							label: 'Admin Email MFA Notification',
-							description: 'Send an email notification to admin if the email MFA has been used by a user',
-						}).element,
-						XNAT.ui.panel.input.switchbox({
-							name: 'enforcePreferredMfaMethod',
-							id: 'enforcePreferredMfaMethod',
-							label: 'Enforce all users to switch to Preferred MFA Method',
-							description: 'Enabling would enforce all users are switched to the selected preferred MFA Method'
-						}).element
+            spawn('mfa-settings-form', [
+                XNAT.ui.panel.select.single({
+                    name: 'preferredMfaMethod',
+                    label: 'Preferred MFA Method',
+                    description: 'Select the site wide preferred MFA Method',
+                    options: mfaSiteManager.mfaMethodOptions
+                }).element,
+                XNAT.ui.panel.input.switchbox({
+                    name: 'enableMfaEmailBackup',
+                    id: 'enableMfaEmailBackup',
+                    label: 'Allow Email As Backup MFA Option',
+                    description: 'User can choose email as the MFA method during login',
+                }).element,
+                XNAT.ui.panel.input.switchbox({
+                    name: 'mfaAdminEmailNotification',
+                    id: 'mfaAdminEmailNotification',
+                    label: 'Admin Email MFA Notification',
+                    description: 'Send an email notification to admin if the email MFA has been used by a user',
+                }).element
+            ])
+        );
 
-                        ])
-                 );
+        mfaSiteManager.container.parents('.panel').find('.panel-footer').empty().append(spawn('!',[
+            spawn('div.pull-right button.btn.sm.save', {
+                onclick: function(e){
+                    e.preventDefault();
+                    var selectedPreferredMFAElt = document.getElementById('preferred-mfa-method');
+                    var selectedPreferredMFAEltValue = selectedPreferredMFAElt.value;
 
-			mfaSiteManager.container.append(spawn('div.pull-right button.btn.sm.save', {
-			                onclick: function(e){
-			                    e.preventDefault();
-								var selectedPreferredMFAElt = document.getElementById('preferred-mfa-method');
-								var enforcePreferredMfaMethodElt = document.getElementById('enforcePreferredMfaMethod');
-								var selectedPreferredMFAEltValue = selectedPreferredMFAElt.value;
-								var enforcePreferredMfaMethodChecked = enforcePreferredMfaMethodElt.checked;
-
-								var emailAppend = '';
-								if (document.getElementById('enableMfaEmailBackup').checked) {
-									emailAppend ='?emailBackup=true';
-								} else {
-									emailAppend ='?emailBackup=false';
-								}
-								if (document.getElementById('mfaAdminEmailNotification').checked) {
-									emailAppend +='&mfaAdminEmailNotification=true';
-								} else {
-									emailAppend +='&mfaAdminEmailNotification=false';
-								}
-								XNAT.xhr.post({
-									url: emailBackupUrl(emailAppend),
-									success: function () {
-									},
-									error: function (e) {
-										errorHandler(e);
-									}
-								});
-
-								var append = "?switchAll=false";
-								if (enforcePreferredMfaMethodChecked) {
-									append = "?switchAll=true" ;
-								}
-								if (selectedPreferredMFAEltValue != "null") {
-			                        xmodal.loading.open({ title: 'Saving Preferred MFA Method'});
-									XNAT.xhr.post({
-										url: getMfaPreferredUrl(selectedPreferredMFAEltValue + append),
-										dataType: 'text',
-										success: function () {
-											xmodal.loading.close();
-											XNAT.dialog.closeAll();
-											XNAT.ui.banner.top(2000, 'Updated preferred MFA method', 'success')
-											location.reload();
-										},
-										error: function (e) {
-											xmodal.loading.close();
-											errorHandler(e);
-										}
-									});
-								}else {
-									XNAT.dialog.open({
-										title: 'Validation error',
-										width: 300,
-										content: 'Please select a valid method'
-                            		});
-								}
-							}
-			            }, 'Save'));
-
+                    var emailAppend = '';
+                    if (document.getElementById('enableMfaEmailBackup').checked) {
+                        emailAppend ='?emailBackup=true';
+                    } else {
+                        emailAppend ='?emailBackup=false';
+                    }
+                    if (document.getElementById('mfaAdminEmailNotification').checked) {
+                        emailAppend +='&mfaAdminEmailNotification=true';
+                    } else {
+                        emailAppend +='&mfaAdminEmailNotification=false';
+                    }
+                    XNAT.xhr.post({
+                        url: emailBackupUrl(emailAppend),
+                        success: function () {
+                            XNAT.ui.banner.top(2000,'MFA site preferences updated','success');
+                        },
+                        error: function (e) {
+                            XNAT.ui.banner.top(2000,'An error occurred','error');
+                            errorHandler(e);
+                        }
+                    });
+                }
+            }, 'Save'),
+            spawn('div.clearfix.clear')
+        ]));
 	};
 
 	mfaSiteManager.getEmailBackup = getEmailBackup = function() {
@@ -372,12 +345,11 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 	        };
 	};
 
-
     mfaSiteManager.init();
 
     exemptedUsers.getAll = function(){
 	        XNAT.xhr.get({
-	            url: getUsersUrl(),
+	            url: getUsersUrl('/profiles'),
 	            async: false,
 	            dataType: 'json',
 	            success: function(data){
@@ -433,47 +405,71 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 		return mfa_registered;
 	}
 
-	function exemptedCheckbox(login, exempted, disabled) {
-	            var ckbox = spawn('input', {
-	                type: 'checkbox',
-	                checked: exempted,
-	                disabled: disabled,
-	                value: exempted,
-	                id: 'exempted-' + login ,
-	                classes: login
-	            });
+	function exemptedCheckbox(login, exempted, disabled=false) {
+        var ckbox = spawn('input',{
+            type: 'checkbox',
+            checked: (exempted) ? 'checked' : false,
+            value: 'true',
+            classes: login,
+            onchange: function(){
+                const exemptStatus = !exempted;
+                XNAT.xhr.postJSON({
+                    url: setExemptStatusForUser(login,exemptStatus),
+                    success: function(){
+                        XNAT.ui.banner.top(2000,'Set MFA exempt status to '+exemptStatus.toString()+' for user '+login,'success');
+                        XNAT.plugin['mfa_plugin'].exemptedUsers.init();
+                    },
+                    failure: function(e){
+                        XNAT.ui.banner.top(2000,'An error occurred','error');
+                        console.error(e);
+                    }
+                })
+            }
+        })
 
-	            return spawn('div.center', [ckbox]);
-	        }
+        return spawn('div.center', [
+            spawn('label.switchbox',{ title: 'Toggle MFA exempt status for '+login },[
+                ckbox,
+                ['span.switchbox-outer', [['span.switchbox-inner']]]
+            ])
+        ]);
+    }
 
 	function resetCheckbox(login) {
-		var ckbox = spawn('input', {
-			type: 'checkbox',
-			checked: false,
-			disabled: false,
-			value: false,
-			id: 'reset-' + login ,
-			classes: login
-		});
-		return spawn('div.center', [ckbox]);
+        return spawn('div.center',[
+            spawn('button.btn.btn-sm.reset-user', {
+                title: 'Reset MFA for '+login,
+                html: '<i class="fa fa-refresh"></i>',
+                onclick: function(){
+                    XNAT.xhr.postJSON({
+                        url: unregisterMfaUser(login),
+                        success: function(){
+                            XNAT.ui.banner.top(2000,'Reset MFA device and method for '+login,'success');
+                            XNAT.plugin['mfa_plugin'].exemptedUsers.init();
+                        },
+                        failure: function(e){
+                            XNAT.ui.banner.top(2000,'An error occurred','error');
+                            console.error(e);
+                        }
+                    })
+                }
+            })
+        ]);
 	}
-
-
-
 
 	exemptedUsers.table = function($parent) {
 		exemptedUsers.getAll();
-		var columnIds = ["exempted", "reset",  "login", "registered","mfa_method"];
+		var columnIds = ["login", "mfa_method","registered", "exempted", "reset" ];
 		var labelMap = {
+		            login: {label: "User Login", checkboxes: false, id: "Login"},
+		            mfa_method: {label: "MFA Method", checkboxes: false, id: "Method"},
+					registered: {label: "MFA Registered", checkboxes: false, id: "registered"},
 		            exempted: {label: "Exempted", checkboxes: true, id: "Exempted"},
 					reset: {label: "Reset", checkboxes: true, id: "Reset"},
-		            login: {label: "User Login", checkboxes: false, id: "Login"},
-					registered: {label: "MFA Registered", checkboxes: false, id: "registered"},
-		            mfa_method: {label: "MFA Method", checkboxes: false, id: "Method"}
         };
 		// initialize the table - we'll add to it below
         var userTable = XNAT.table({
-            className: 'exempted-users-table xnat-table data-table clean fixed-header selectable scrollable-table',
+            className: 'exempted-users-table xnat-table data-table clean',
             style: {
                 width: 'auto'
             }
@@ -489,25 +485,25 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
             return $dataRows;
         }
         function filterRows(val, name){
-		            if (!val) { return false }
-		            val = val.toLowerCase();
-		            var filterClass = 'filter-' + name;
-		            // cache the rows if not cached yet
-		            cacheRows();
-		            $dataRows.addClass(filterClass).filter(function(){
-		                return $(this).find('td.' + name).containsNC(val).length
-		            }).removeClass(filterClass);
-		            exemptedUsers.$table.find('.selectable-select-all').each(function(){
-		                setIndeterminate($(this), $(this).data('configId'), $(this).prop('checked'));
-		            });
-		        }
+            if (!val) { return false }
+            val = val.toLowerCase();
+            var filterClass = 'filter-' + name;
+            // cache the rows if not cached yet
+            cacheRows();
+            $dataRows.addClass(filterClass).filter(function(){
+                return $(this).find('td.' + name).containsNC(val).length
+            }).removeClass(filterClass);
+            exemptedUsers.$table.find('.selectable-select-all').each(function(){
+                setIndeterminate($(this), $(this).data('configId'), $(this).prop('checked'));
+            });
+        }
 
 
         userTable.thead().tr();
-		        $.each(columnIds, function(i, c) {
-		            userTable.th('<b>' + labelMap[c].label + '</b>');
-		        });
-		        // add check-all header row
+        $.each(columnIds, function(i, c) {
+            userTable.th('<b>' + labelMap[c].label + '</b>');
+        });
+
         userTable.tr({classes: 'filter'});
          $.each(columnIds, function(i, c) {
 		            if (labelMap[c].checkboxes) {
@@ -517,7 +513,7 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 		                var $filterInput = $.spawn('input.filter-data', {
 		                    type: 'text',
 		                    title: c + ':filter',
-		                    placeholder: 'Filter by ' + c,
+		                    placeholder: 'Filter by ' + labelMap[c].label,
 		                    style: 'width: 90%;'
 		                });
 		                $filterInput.on('focus', function(){
@@ -549,17 +545,18 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 		userTable.tbody({classes: 'table-body'});
 
 		$.each(xnatUsersList, function (i, e) {
+		    e = e.username; // grab username from user profile object
 			if (e ==='guest') return true;
 			userTable.tr();
-			if (isUserExempted(e)) {
+			userTable.td({classes: columnIds[0]}, e);
+			userTable.td({classes: columnIds[1], id: "method-" + e}, getMFAMethod(e));
+			userTable.td({classes: columnIds[2]}, getRegistered(e));
+            if (isUserExempted(e)) {
 				userTable.td([exemptedCheckbox(e, true, false)]);
 			} else {
 				userTable.td([exemptedCheckbox(e, false, false)]);
 			}
 			userTable.td([resetCheckbox(e)]);
-			userTable.td({classes: columnIds[2]}, e);
-			userTable.td({classes: columnIds[3]}, getRegistered(e));
-			userTable.td({classes: columnIds[4], id: "method-" + e}, getMFAMethod(e));
 
 		});
 
@@ -568,103 +565,31 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 		$manager.empty().prepend(userTable.table);
 		exemptedUsers.container = $manager;
 		exemptedUsers.$table = $(userTable.table);
-
-
 	}
 
-
+    $(document).on('click','.reset-mfa-for-all-users',function(){
+        var selectedPreferredMFAElt = document.getElementById('preferred-mfa-method');
+        var selectedPreferredMFAEltValue = selectedPreferredMFAElt.value;
+        XNAT.xhr.post({
+            url: getMfaPreferredUrl(selectedPreferredMFAEltValue + '?switchAll=true'),
+            dataType: 'text',
+            success: function () {
+                XNAT.ui.banner.top(2000, 'Updated preferred MFA method for all users', 'success')
+                XNAT.plugin['mfa_plugin'].exemptedUsers.init();
+            },
+            error: function (e) {
+                XNAT.ui.banner.top(2000,'An error occurred','error');
+                errorHandler(e);
+            }
+        });
+    })
      exemptedUsers.init = function() {
-	        var $parent = $('div#mfa-exempt-users');
+        var $parent = $(document).find('#mfa-exempt-users');
 
-	        if (exemptedUsers.$table) {
-	            exemptedUsers.$table.remove();
-	        }
-	        exemptedUsers.table($parent);
-	        $parent.append(spawn('div.pull-right button.btn.sm.save', {
-			                onclick: function(e){
-			                    e.preventDefault();
-			                    var exemptedUsersCSV = "";
-			                    var revokeExemptionCSV = "";
-			                    var actionTaken = false;
-			                    $.each( xnatUsersList , function(i,username) {
-									if (username ==='guest') return true;
-									var checkBoxElt = document.getElementById('exempted-'+username);
-									var userAlreadyExempted = isUserExempted(username);
-									if (checkBoxElt.checked && !userAlreadyExempted) {
-										exemptedUsersCSV = exemptedUsersCSV + username + ",";
-									}else if (!checkBoxElt.checked  && userAlreadyExempted) {
-										revokeExemptionCSV = revokeExemptionCSV + username + ",";
-									}
-									var resetBoxElt = document.getElementById('reset-'+username);
-									if (resetBoxElt.checked) {
-										actionTaken = true;
-										resetBoxElt.checked = false;
-										XNAT.xhr.post({
-											url: unregisterMfaUser(username),
-											async: true,
-											success: function () {
-												document.getElementById('method-'+username).innerText = '-----'
-											},
-											error: function (e) {
-												errorHandler(e);
-											}
-										});
-									}
-									});
-								if (exemptedUsersCSV.endsWith(',')) {
-									exemptedUsersCSV = exemptedUsersCSV.substring(0,exemptedUsersCSV.length-1);
-								}
-								if (revokeExemptionCSV.endsWith(',')) {
-									revokeExemptionCSV = revokeExemptionCSV.substring(0,revokeExemptionCSV.length-1);
-								}
-								if (exemptedUsersCSV != "") {
-			                        actionTaken = true;
-			                        xmodal.loading.open({ title: 'Updating exempted users ' + exemptedUsersCSV});
-									XNAT.xhr.post({
-										url: getMFAMultipleExemptUsers('?usernames='+exemptedUsersCSV),
-										async: false,
-										dataType: 'text',
-										success: function () {
-											xmodal.loading.close();
-											XNAT.dialog.closeAll();
-											XNAT.ui.banner.top(2000, 'Updated exempted users', 'success')
-										},
-										error: function (e) {
-											xmodal.loading.close();
-											errorHandler(e);
-										}
-									});
-								}
-								if (revokeExemptionCSV != "") {
-			                        actionTaken = true;
-			                        xmodal.loading.open({ title: 'Revoking exemption of users ' + revokeExemptionCSV});
-									XNAT.xhr.post({
-										url: getMFAMultipleEnforceMfa('?usernames='+revokeExemptionCSV),
-										dataType: 'text',
-										async: false,
-										success: function () {
-											xmodal.loading.close();
-											XNAT.dialog.closeAll();
-											XNAT.ui.banner.top(2000, 'Revoked exemption of users', 'success')
-										},
-										error: function (e) {
-											xmodal.loading.close();
-											errorHandler(e);
-										}
-									});
-								}
-								if (!actionTaken) {
-									XNAT.dialog.open({
-										title: 'Validation error',
-										width: 300,
-										content: 'Please select atleast one user to be exempted'
-                            		});
-								}else {
-								   exemptedUsers.getAll();
-								}
-			                }
-			            }, 'Save'));
-
+        if (exemptedUsers.$table) {
+            exemptedUsers.$table.remove();
+        }
+        exemptedUsers.table($parent);
     };
 
     exemptedUsers.init();
