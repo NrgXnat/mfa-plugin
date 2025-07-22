@@ -19,6 +19,7 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
     }
 }(function() {
     var mfaSiteManager, mfaSiteConfig;
+    const loggedInUser = window.username;
 
     XNAT.plugin.mfa_plugin.mfaSiteManager = mfaSiteManager =
         getObject(XNAT.plugin.mfa_plugin.mfaSiteManager || {});
@@ -34,9 +35,10 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
     XNAT.plugin.mfa_plugin.xnatUsersList = xnatUsersList = [];
     XNAT.plugin.mfa_plugin.mfaUsersList = mfaUsersList  = getObject(XNAT.plugin.mfa_plugin.mfaUsersList || []);
 
-
     XNAT.plugin.mfa_plugin.exemptedUsers = exemptedUsers =
         getObject(XNAT.plugin.mfa_plugin.exemptedUsers || {});
+
+    XNAT.plugin.mfa_plugin.settings = {};
 
    function displayErrors(errorMsg) {
         var errors = [];
@@ -176,8 +178,9 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
             url: siteConfigUrl(),
             success: function(data){
 				var methods_response_str = JSON.stringify(data);
-				var sitePreferencesJson = JSON.parse(methods_response_str);
+				sitePreferencesJson = JSON.parse(methods_response_str);
 				setSitePreferences(sitePreferencesJson);
+				Object.assign(XNAT.plugin.mfa_plugin.settings,sitePreferencesJson);
             },
             error: function(e) {
                 errorHandler(e);
@@ -405,25 +408,52 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 		return mfa_registered;
 	}
 
+	XNAT.plugin.mfa_plugin.setExemptStatus = function(login,exemptStatus,reload=false) {
+	    XNAT.xhr.postJSON({
+            url: setExemptStatusForUser(login,exemptStatus),
+            success: function(){
+                XNAT.ui.banner.top(2000,'Set MFA exempt status to '+exemptStatus.toString()+' for user '+login,'success');
+                if (reload) {
+                    location.reload();
+                } else {
+                    XNAT.plugin['mfa_plugin'].exemptedUsers.init();
+                }
+            },
+            failure: function(e){
+                XNAT.ui.banner.top(2000,'An error occurred','error');
+                console.error(e);
+            }
+        });
+	}
+
 	function exemptedCheckbox(login, exempted, disabled=false) {
-        var ckbox = spawn('input',{
+	    let checkAdminStatus = (login === loggedInUser);
+        const ckbox = spawn('input.exempt-user',{
             type: 'checkbox',
             checked: (exempted) ? 'checked' : false,
             value: 'true',
-            classes: login,
+            classes: 'exempt-'+login,
             onchange: function(){
                 const exemptStatus = !exempted;
-                XNAT.xhr.postJSON({
-                    url: setExemptStatusForUser(login,exemptStatus),
-                    success: function(){
-                        XNAT.ui.banner.top(2000,'Set MFA exempt status to '+exemptStatus.toString()+' for user '+login,'success');
-                        XNAT.plugin['mfa_plugin'].exemptedUsers.init();
-                    },
-                    failure: function(e){
-                        XNAT.ui.banner.top(2000,'An error occurred','error');
-                        console.error(e);
-                    }
-                })
+                const thisInput = this;
+                if (checkAdminStatus && !exemptStatus && XNAT.plugin.mfa_plugin.settings['requireAdminMfa'] && XNAT.plugin.mfa_plugin.exemptedUsers.getRegistered(login) === "false") {
+                    // If the logged-in user toggles “Exempted” to false AND “Require MFA for Administrators” is true AND “MFA Registered” is false
+                    XNAT.ui.dialog.confirm({
+                        title: 'MFA Exempt Warning',
+                        content: 'Removing your own MFA exemption when "Require MFA for Admins" is set to true and your own MFA registration is not complete will cause the application to immediately log you out and require an updated MFA device registration. ',
+                        okLabel: 'Proceed with MFA Exemption Removal',
+                        okAction: function(){
+                            // add a page reload when removing exempt status.
+                            XNAT.plugin.mfa_plugin.setExemptStatus(login,exemptStatus,true);
+                        },
+                        cancelAction: function(){
+                            $(thisInput).prop('checked','checked')
+                            return false;
+                        }
+                    })
+                } else {
+                    XNAT.plugin.mfa_plugin.setExemptStatus(login,exemptStatus);
+                }
             }
         })
 
@@ -435,23 +465,44 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
         ]);
     }
 
+    XNAT.plugin.mfa_plugin.resetAction = function(login){
+        XNAT.xhr.postJSON({
+           url: unregisterMfaUser(login),
+           success: function(){
+               XNAT.ui.banner.top(2000,'Reset MFA device and method for '+login,'success');
+               XNAT.plugin['mfa_plugin'].exemptedUsers.init();
+           },
+           failure: function(e){
+               XNAT.ui.banner.top(2000,'An error occurred','error');
+               console.error(e);
+           }
+        });
+    }
+
 	function resetCheckbox(login) {
+	    let checkAdminStatus = (login === loggedInUser);
         return spawn('div.center',[
             spawn('button.btn.btn-sm.reset-user', {
                 title: 'Reset MFA for '+login,
                 html: '<i class="fa fa-refresh"></i>',
+                addClass: 'reset-'+login,
                 onclick: function(){
-                    XNAT.xhr.postJSON({
-                        url: unregisterMfaUser(login),
-                        success: function(){
-                            XNAT.ui.banner.top(2000,'Reset MFA device and method for '+login,'success');
-                            XNAT.plugin['mfa_plugin'].exemptedUsers.init();
-                        },
-                        failure: function(e){
-                            XNAT.ui.banner.top(2000,'An error occurred','error');
-                            console.error(e);
-                        }
-                    })
+                    if (checkAdminStatus && XNAT.plugin.mfa_plugin.settings['requireAdminMfa'] && !XNAT.plugin.mfa_plugin.exemptedUsers.isUserExempted(login)) {
+                        // If the logged-in user clicks “Reset MFA Method” on their own account AND “Require MFA for Administrators” is true AND “Exempted” is false, confirm the action
+                        XNAT.ui.dialog.confirm({
+                            title: 'MFA Reset Warning',
+                            content: 'Resetting your own MFA method when "Require MFA for Admins" is set to "true" will cause the application to immediately log you out and require an updated MFA device registration. You can avoid this by setting your "Exempt" status to "true" before continuing.',
+                            okLabel: 'Proceed with MFA Reset',
+                            okAction: function(){
+                                XNAT.plugin.mfa_plugin.resetAction(login);
+                            },
+                            cancelAction: function(){
+                                return false;
+                            }
+                        })
+                    } else {
+                        XNAT.plugin.mfa_plugin.resetAction(login);
+                    }
                 }
             })
         ]);
@@ -568,21 +619,53 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
 	}
 
     $(document).on('click','.reset-mfa-for-all-users',function(){
-        var selectedPreferredMFAElt = document.getElementById('preferred-mfa-method');
-        var selectedPreferredMFAEltValue = selectedPreferredMFAElt.value;
-        XNAT.xhr.post({
-            url: getMfaPreferredUrl(selectedPreferredMFAEltValue + '?switchAll=true'),
-            dataType: 'text',
-            success: function () {
-                XNAT.ui.banner.top(2000, 'Updated preferred MFA method for all users', 'success')
-                XNAT.plugin['mfa_plugin'].exemptedUsers.init();
-            },
-            error: function (e) {
-                XNAT.ui.banner.top(2000,'An error occurred','error');
-                errorHandler(e);
-            }
-        });
+        function resetAllUsers(){
+            var selectedPreferredMFAElt = document.getElementById('preferred-mfa-method');
+            var selectedPreferredMFAEltValue = selectedPreferredMFAElt.value;
+            XNAT.xhr.post({
+                url: getMfaPreferredUrl(selectedPreferredMFAEltValue + '?switchAll=true'),
+                dataType: 'text',
+                success: function () {
+                    XNAT.ui.banner.top(2000, 'Updated preferred MFA method for all users', 'success')
+                    XNAT.plugin['mfa_plugin'].exemptedUsers.init();
+                },
+                error: function (e) {
+                    XNAT.ui.banner.top(2000,'An error occurred','error');
+                    errorHandler(e);
+                }
+            });
+        }
+
+        // If the admin toggles this setting and "Require MFA for Administrators" is true and they are not exempt, they will be forced to re-enroll in MFA.
+        if (XNAT.plugin.mfa_plugin.settings['requireAdminMfa'] && !XNAT.plugin.mfa_plugin.exemptedUsers.isUserExempted(loggedInUser)) {
+            XNAT.ui.dialog.confirm({
+                title: 'MFA Requirement Warning',
+                content: 'Requiring MFA for site administrators when your own MFA method is not set will cause the application to immediately log you out and require an updated MFA device registration. ' + exemptMessage,
+                okLabel: 'Proceed',
+                okAction: function(){ resetAllUsers(); }
+            });
+        }
+
+    });
+
+    $(document).on('change','input#requireAdminMfa',function(){
+        // If the admin toggles “Require MFA for Administrators” to true AND “MFA Registered” is false AND “Exempted” is false for their login, warn them before proceeding
+        if (!XNAT.plugin.mfa_plugin.settings['requireAdminMfa'] && !XNAT.plugin.mfa_plugin.exemptedUsers.isUserExempted(loggedInUser)) {
+            var exemptMessage = (XNAT.plugin.mfa_plugin.exemptedUsers.getRegistered(loggedInUser) === "true") ? 'This action will also unset your exempt status. ' : '';
+            XNAT.ui.dialog.confirm({
+                title: 'MFA Requirement Warning',
+                content: 'Requiring MFA for site administrators when your own MFA method is not set will cause the application to immediately log you out and require an updated MFA device registration. ' + exemptMessage,
+                okLabel: 'Proceed',
+                cancelLabel: 'Undo',
+                cancelAction: function(){
+                    $('input#requireAdminMfa').prop('checked',false);
+                    XNAT.ui.dialog.closeAll();
+                }
+            })
+        }
     })
+
+
      exemptedUsers.init = function() {
         var $parent = $(document).find('#mfa-exempt-users');
 

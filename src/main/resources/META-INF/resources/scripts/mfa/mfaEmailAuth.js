@@ -34,8 +34,8 @@ XNAT.app = getObject(XNAT.app || {});
                         contents:
                             '<p><strong>Enter OTP code from Email:</strong></p>' +
                             '<p><input type="text" id="authenticator-code" size="6" maxlength="6" placeholder="888888" />' +
-                            '<span id="mfa-error"><i class="fa fa-exclamation-circle"></i>&nbsp;<span id="error-msg"></span></span></p>' +
-                            '<a class="btn1 mfa-verify-btn"" id="mfa-login-btn" href="#!">Verify Code</a>'
+                            '<br><span id="mfa-error"><i class="fa fa-exclamation-circle"></i>&nbsp;<span id="error-msg"></span></span></p>' +
+                            '<p><a class="btn1 mfa-verify-btn"" id="mfa-login-btn" href="#!">Verify Code</a></p>'
                     },
                     authHelpMessage: {
 //                        tag: 'div#mfa-email-btn.auth-help.message',

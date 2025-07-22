@@ -21,7 +21,7 @@ mfaUserManagementPanel:
             tag: div.message
             element:
                 style: "margin: 0 0 1rem"
-            contents: "Use the table below to exempt or reset users from MFA<br><br><button class='btn btn-sm reset-mfa-for-all-users'>Reset All Users to Default MFA Method</button>"
+            contents: "Manage users' MFA registration individually using the table below. You can reset their MFA registration, which will revert their MFA method to the site default and give them an opportunity to re-enroll, or mark a user exempt from the MFA requirement. <br><br><button class='btn btn-sm reset-mfa-for-all-users'><i class='fa fa-refresh'></i>&nbsp; Reset All Users</button>"
         config:
             tag: div#mfa-exempt-users.data-table-container #dont change, see multifactorAuth-siteAdmin.js
             
@@ -43,6 +43,7 @@ mfaSettingsFormPanel:
             kind: panel.input.switchbox
             name: requireAdminMfa
             id: requireAdminMfa
+            className: "checkAdminStatus requireMfaAdmin"
             label: Require MFA for Administrators
             description: Require Multifactor Authentication to be enabled on Admin accounts. 
         config:
