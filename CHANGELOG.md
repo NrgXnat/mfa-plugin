@@ -2,6 +2,23 @@
 
 The MFA Plugin enables XNAT to require multi-factor authentication for users via multiple channels. 
 
+## MFA Plugin Version 1.5.0
+Released 2025-07-25
+
+**New Features and Improvements**
+* [MFA-12](https://radiologics.atlassian.net/browse/MFA-12) Allow site admin to reset users' MFA registration
+* [MFA-14](https://radiologics.atlassian.net/browse/MFA-14) Replace deprecated Google Authenticator QR chart generation script
+* [MFA-15](https://radiologics.atlassian.net/browse/MFA-15) Improve MFA user table by adding registration status, and reflect this in Administer Users as well
+* [MFA-16](https://radiologics.atlassian.net/browse/MFA-16) Improve UX of plugin administration and MFA user controls
+* [MFA-20](https://radiologics.atlassian.net/browse/MFA-20) Improve UX of MFA registration pages
+* [MFA-21](https://radiologics.atlassian.net/browse/MFA-21) Warn site admins before they make changes in MFA administration that inadvertently log themselves out
+
+**Bugfixes**
+* [MFA-7](https://radiologics.atlassian.net/browse/MFA-7) Replace deprecated Google Authenticator QR chart generation script, and deprecate SMS as a supported method (for now)
+* [MFA-17](https://radiologics.atlassian.net/browse/MFA-17) Remove guest user from MFA user table
+* [MFA-18](https://radiologics.atlassian.net/browse/MFA-18), [MFA-19](https://radiologics.atlassian.net/browse/MFA-19) Fix blocker bugs preventing MFA registration on non-root XNAT installations
+
+
 ## MFA Plugin Version 1.4.0
 Released 2024-10-25
 
