@@ -639,11 +639,13 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
         // If the admin toggles this setting and "Require MFA for Administrators" is true and they are not exempt, they will be forced to re-enroll in MFA.
         if (XNAT.plugin.mfa_plugin.settings['requireAdminMfa'] && !XNAT.plugin.mfa_plugin.exemptedUsers.isUserExempted(loggedInUser)) {
             XNAT.ui.dialog.confirm({
-                title: 'MFA Requirement Warning',
-                content: 'Requiring MFA for site administrators when your own MFA method is not set will cause the application to immediately log you out and require an updated MFA device registration. ' + exemptMessage,
+                title: 'MFA Reset Warning',
+                content: 'Resetting MFA methods and devices for all users (including yourself) when "Require MFA for Admins" is set to true will cause the application to immediately log you out and require an updated MFA device registration. You can avoid this by adding an MFA exemption to your account, if desired. ',
                 okLabel: 'Proceed',
                 okAction: function(){ resetAllUsers(); }
             });
+        } else {
+            resetAllUsers();
         }
 
     });
