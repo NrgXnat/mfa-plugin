@@ -14,7 +14,8 @@ Released 2025-07-25
 * [MFA-21](https://radiologics.atlassian.net/browse/MFA-21) Warn site admins before they make changes in MFA administration that inadvertently log themselves out
 
 **Bugfixes**
-* [MFA-7](https://radiologics.atlassian.net/browse/MFA-7) Replace deprecated Google Authenticator QR chart generation script, and deprecate SMS as a supported method (for now)
+* [MFA-7](https://radiologics.atlassian.net/browse/MFA-7) Replace deprecated Google Authenticator QR chart generation script
+* [MFA-8](https://radiologics.atlassian.net/browse/MFA-8) Deprecate SMS as a supported method (for now)
 * [MFA-17](https://radiologics.atlassian.net/browse/MFA-17) Remove guest user from MFA user table
 * [MFA-18](https://radiologics.atlassian.net/browse/MFA-18), [MFA-19](https://radiologics.atlassian.net/browse/MFA-19) Fix blocker bugs preventing MFA registration on non-root XNAT installations
 
