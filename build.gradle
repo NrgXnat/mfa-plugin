@@ -23,7 +23,7 @@ plugins {
 }
 
 group "com.radiologics"
-version "1.5.0-SNAPSHOT"
+version "1.5.0-RC-SNAPSHOT"
 description "XNAT Multi-Factor Authentication plugin"
 
 repositories {
