@@ -7,7 +7,7 @@
  
 buildscript {
     ext {
-        vXnat    = "1.9.0"
+        vXnat = "1.10.0-SNAPSHOT"
     }
 }
 
@@ -16,61 +16,43 @@ plugins {
     id "idea"
     id "java-library"
     id "maven-publish"
-    id "com.palantir.git-version" version "3.0.0"
+    id "com.palantir.git-version" version "4.0.0"
     id "io.franzbecker.gradle-lombok" version "5.0.0"
+    id "io.spring.dependency-management" version "1.1.7"
     id "net.linguica.maven-settings" version "0.5"
     id "org.nrg.xnat.build.xnat-data-builder" version "${vXnat}"
 }
 
-group "com.radiologics"
-version "1.6.0-SNAPSHOT"
-description "XNAT Multi-Factor Authentication plugin"
+group = "com.radiologics"
+version = "1.6.0-SNAPSHOT"
+description = "XNAT Multi-Factor Authentication plugin"
 
 repositories {
     mavenLocal()
-    maven { url "https://nrgxnat.jfrog.io/nrgxnat/libs-release" }
-    maven { url "https://nrgxnat.jfrog.io/nrgxnat/libs-snapshot" }
+    maven { url = "https://nrgxnat.jfrog.io/nrgxnat/libs-release" }
+    maven { url = "https://nrgxnat.jfrog.io/nrgxnat/libs-snapshot" }
     mavenCentral()
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-    withSourcesJar()
-    withJavadocJar()
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir "build/xnat-generated/src/main/java"
-        }
-        resources {
-            srcDir "build/xnat-generated/src/main/resources"
-        }
-    }
-}
-
 configurations {
+    configureEach {
+        exclude group: "log4j"
+    }
     implementation.extendsFrom(implementAndInclude)
 }
 
-dependencies {
-    api platform("org.nrg:parent:${vXnat}")
-    implementation platform("org.nrg:parent:${vXnat}")
+dependencyManagement.imports {
+    mavenBom "org.nrg:parent:${vXnat}"
+}
 
+dependencies {
     implementation ("org.nrg.xnat:web") {
         exclude group: "*"
     }
-    
-    implementation ("org.nrg.xdat:core") {
+    implementation ("org.nrg.xnat:xnat-data-models") {
         exclude group: "*"
     }
-
-    implementation "org.nrg.xnat:xnat-data-models"
-    implementation "org.nrg:prefs"
-    implementation "org.nrg:mail"
-    implementation "org.nrg:framework"
+    implementation "org.nrg.xdat:core"
     implementation "org.springframework.security:spring-security-web"
     implementation "org.springframework.security:spring-security-config"
     implementation "org.springframework:spring-tx"
@@ -110,8 +92,31 @@ try {
     isCleanTag = false
 }
 
+java {
+    withSourcesJar()
+    withJavadocJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir "build/xnat-generated/src/main/java"
+        }
+        resources {
+            srcDir "build/xnat-generated/src/main/resources"
+        }
+    }
+}
+
+lombok {
+    version = dependencyManagement.importedProperties["lombok.version"] as String
+    sha256 = dependencyManagement.importedProperties["lombok.checksum"] as String
+}
+
 compileJava {
-    dependsOn xnatDataBuilder
     options.fork = false
 }
 
@@ -156,7 +161,10 @@ tasks.withType(Jar).configureEach {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            from components.java
+            artifacts {
+                artifact sourcesJar
+                artifact xnatPluginJar
+            }
 
             versionMapping {
                 usage("java-api") {
@@ -196,7 +204,7 @@ publishing {
     }
     repositories{ 
         maven {
-            url "https://nrgxnat.jfrog.io/nrgxnat/libs-${project.version.endsWith("-SNAPSHOT") ? "snapshot" : "release"}"
+            url = "https://nrgxnat.jfrog.io/nrgxnat/libs-${project.version.endsWith("-SNAPSHOT") ? "snapshot" : "release"}"
             // The value for name must match <id> in ~/.m2/settings.xml
             name = "XNAT_Artifactory"
         }
