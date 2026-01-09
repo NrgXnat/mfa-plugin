@@ -7,7 +7,7 @@
  
 buildscript {
     ext {
-        vXnat    = "1.9.0"
+        vXnat    = "1.10.0-RC-SNAPSHOT"
     }
 }
 
@@ -23,7 +23,7 @@ plugins {
 }
 
 group "com.radiologics"
-version "1.5.0"
+version "1.5.0-java21-RC-SNAPSHOT"
 description "XNAT Multi-Factor Authentication plugin"
 
 repositories {
@@ -34,8 +34,8 @@ repositories {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
     withSourcesJar()
     withJavadocJar()
 }
