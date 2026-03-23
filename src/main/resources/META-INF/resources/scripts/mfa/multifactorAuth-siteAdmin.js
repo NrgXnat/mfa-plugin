@@ -270,9 +270,18 @@ XNAT.plugin.mfa_plugin = getObject(XNAT.plugin.mfa_plugin || {});
                         emailAppend +='&mfaAdminEmailNotification=false';
                     }
                     XNAT.xhr.post({
-                        url: emailBackupUrl(emailAppend),
+                        url: getMfaPreferredUrl(selectedPreferredMFAEltValue + '?switchAll=false'),
                         success: function () {
-                            XNAT.ui.banner.top(2000,'MFA site preferences updated','success');
+                            XNAT.xhr.post({
+                                url: emailBackupUrl(emailAppend),
+                                success: function () {
+                                    XNAT.ui.banner.top(2000,'MFA site preferences updated','success');
+                                },
+                                error: function (e) {
+                                    XNAT.ui.banner.top(2000,'An error occurred','error');
+                                    errorHandler(e);
+                                }
+                            });
                         },
                         error: function (e) {
                             XNAT.ui.banner.top(2000,'An error occurred','error');
