@@ -106,7 +106,6 @@ public class MultifactorAuthenticationServiceImpl extends AbstractHibernateEntit
             log.debug("Multi-factor Authentication code sent to user: {}", username);
             update(mfe);
         } catch (Exception e) {
-            log.error("Code could not be sent for user: {}", username, e);
             throw new MFACodeSendFailedException();
         }
     }

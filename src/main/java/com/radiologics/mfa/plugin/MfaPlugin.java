@@ -27,29 +27,35 @@ public class MfaPlugin {
     @Bean
     GoogleAuthenticatorStrategy googleAuthenticatorStrategy(@Value("${mfa.googleAuthenticator.qrCodeUrlTemplate}") String qrCodeUrlTemplate,
                                                             @Value("${mfa.googleAuthenticator.verificationPath}") String verificationPath,
-                                                            @Value("${mfa.googleAuthenticator.registerPath}") String registerPath) {
+                                                            @Value("${mfa.googleAuthenticator.registerPath}") String registerPath,
+                                                            @Value("${mfa.errorPath}") String errorPath) {
         final GoogleAuthenticatorStrategy googleAuthenticator = new GoogleAuthenticatorStrategy();
         googleAuthenticator.setQrCodeUrlTemplate(qrCodeUrlTemplate);
         googleAuthenticator.setVerificationTemplatePath(verificationPath);
         googleAuthenticator.setRegistrationTemplatePath(registerPath);
+        googleAuthenticator.setErrorTemplatePath(errorPath);
         return googleAuthenticator;
     }
 
     @Bean
     EmailAuthenticationStrategy emailAuthenticationStrategy(@Value("${mfa.email.codeSentTextTemplate}") String codeSentEmailTemplate,
-                                                            @Value("${mfa.email.verificationPath}") String verificationPath) {
+                                                            @Value("${mfa.email.verificationPath}") String verificationPath,
+                                                            @Value("${mfa.errorPath}") String errorPath) {
         final EmailAuthenticationStrategy emailAuthenticationStrategy = new EmailAuthenticationStrategy();
         emailAuthenticationStrategy.setVerificationTemplatePath(verificationPath);
-        emailAuthenticationStrategy.setEmailBodyTemplatePath(codeSentEmailTemplate);
+        emailAuthenticationStrategy.setBodyTemplatePath(codeSentEmailTemplate);
+        emailAuthenticationStrategy.setErrorTemplatePath(errorPath);
         return emailAuthenticationStrategy;
     }
 
     @Bean
     SMSAuthenticationStrategy smsAuthenticationStrategy(@Value("${mfa.sms.codeSentTextTemplate}") String codeSentEmailTemplate,
-                                                        @Value("${mfa.sms.verificationPath}") String verificationPath) {
+                                                        @Value("${mfa.sms.verificationPath}") String verificationPath,
+                                                        @Value("${mfa.errorPath}") String errorPath) {
         final SMSAuthenticationStrategy smsAuthenticationStrategy = new SMSAuthenticationStrategy();
         smsAuthenticationStrategy.setVerificationTemplatePath(verificationPath);
-        smsAuthenticationStrategy.setSMSBodyTemplatePath(codeSentEmailTemplate);
+        smsAuthenticationStrategy.setBodyTemplatePath(codeSentEmailTemplate);
+        smsAuthenticationStrategy.setErrorTemplatePath(errorPath);
         return smsAuthenticationStrategy;
     }
 }

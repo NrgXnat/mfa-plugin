@@ -1,6 +1,7 @@
 //Copyright 2019 Radiologics, Inc
 //Author: James Ransford <ransfordj@radiologics.com>
 //Author: Mohana Ramaratnam <mohana@radiologics.com>
+
 package com.radiologics.mfa.filter;
 
 import com.radiologics.mfa.entities.MultifactorEntity;
@@ -11,11 +12,14 @@ import com.radiologics.mfa.strategy.MFAStrategyI;
 import com.radiologics.mfa.utils.MFAConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.nrg.xdat.XDAT;
 import org.nrg.xdat.entities.AliasToken;
 import org.nrg.xdat.services.AliasTokenService;
 import org.nrg.xft.security.UserI;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.security.crypto.codec.Base64;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -26,23 +30,27 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
+import java.net.URI;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-@Slf4j
 @Component
+@PropertySource("classpath:/config/mfa/xnat-mfa.properties")
+@Slf4j
 public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
-
-    private final AliasTokenService aliasTokenService;
+    private final AliasTokenService                aliasTokenService;
     private final MultifactorAuthenticationService multifactorAuthenticationService;
-    private final MFAPreferences mfaPreferences;
+    private final MFAPreferences                   mfaPreferences;
+    private final String                           errorPath;
 
     public MultifactorAuthenticationFilter(final MultifactorAuthenticationService multifactorAuthenticationService,
                                            final MFAPreferences mfaPreferences,
-                                           final AliasTokenService aliasTokenService) {
+                                           final AliasTokenService aliasTokenService,
+                                           @Value("${mfa.errorPath}") final String errorPath) {
         this.multifactorAuthenticationService = multifactorAuthenticationService;
-        this.aliasTokenService = aliasTokenService;
-        this.mfaPreferences = mfaPreferences;
+        this.aliasTokenService                = aliasTokenService;
+        this.mfaPreferences                   = mfaPreferences;
+        this.errorPath                        = errorPath;
     }
 
     @Override
@@ -53,20 +61,20 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        final UserI user = XDAT.getUserDetails();
-        final Object mfaTokenVerified = httpSession.getAttribute(MFAConstants.MFA_TOKEN_VERIFIED);
-        final Boolean mfaTokenSent = (Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_SENT);
-        final String requestUri = request.getRequestURI();
-        final String shortUri = requestUri.contains("?") ? requestUri.substring(0, requestUri.indexOf("?")) : requestUri;
-        final boolean mfaRequired = multifactorAuthenticationService.isMFARequired(user.getUsername());
-        final Object emailBackup = httpSession.getAttribute("EmailBackup");
+        final UserI   user             = XDAT.getUserDetails();
+        final Object  mfaTokenVerified = httpSession.getAttribute(MFAConstants.MFA_TOKEN_VERIFIED);
+        final Boolean mfaTokenSent     = (Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_SENT);
+        final String  requestUri       = request.getRequestURI();
+        final String  shortUri         = requestUri.contains("?") ? requestUri.substring(0, requestUri.indexOf("?")) : requestUri;
+        final boolean mfaRequired      = multifactorAuthenticationService.isMFARequired(user.getUsername());
+        final Object  emailBackup      = httpSession.getAttribute("EmailBackup");
 
         log.debug("MultifactorAuthenticationFilter.doFilterInternal(): shortUri: {}, mfaRequired: {}, mfaTokenVerified: {}, userLogin: {}",
-                shortUri, mfaRequired, mfaTokenVerified, user.getLogin());
+                  shortUri, mfaRequired, mfaTokenVerified, user.getLogin());
 
         if (isAliasToken(request)) {
             // Requests using an alias token should bypass MFA.
-            // Set the token as verified here even though it isn't. This way they wont get blocked if they
+            // Set the token as verified here even though it isn't. This way they won't get blocked if they
             // request a jsessionid using an alias token and then try to pass the cookie in subsequent requests.
             httpSession.setAttribute(MFAConstants.MFA_TOKEN_VERIFIED, true);
             filterChain.doFilter(request, response);
@@ -80,6 +88,11 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(user.getUsername());
+        if (mfe != null && isErrorPageRequest(request) && (boolean) httpSession.getAttribute(MFAConstants.MFA_ERROR)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (null == mfe) {
             mfe = multifactorAuthenticationService.createMfe(user.getUsername());
         }
@@ -102,8 +115,8 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
         if (user.isGuest()) {
             if (!shortUri.endsWith("/xapi/mfa/verify") && !shortUri.endsWith("/xapi/mfa") &&
-                    !shortUri.endsWith("/xapi/mfa/exempt") && (mfaStrategy.getRegistrationTemplatePath().endsWith(shortUri)) ||
-                    mfaStrategy.getVerificationTemplatePath().endsWith(shortUri)) {
+                !shortUri.endsWith("/xapi/mfa/exempt") && (mfaStrategy.getRegistrationTemplatePath().endsWith(shortUri)) ||
+                mfaStrategy.getVerificationTemplatePath().endsWith(shortUri)) {
                 response.sendRedirect(mfaPreferences.getMfaRedirectPath());
                 return;
             }
@@ -139,7 +152,8 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
                     httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, true);
                 }
             } catch (Exception e) {
-                log.error("Failed to send MFA Token to user: {}. {}", user.getUsername(), e.getMessage(), e);
+                httpSession.setAttribute(MFAConstants.MFA_ERROR, true);
+                response.sendRedirect(mfaStrategy.getErrorTemplatePath());
                 return;
             }
 
@@ -181,16 +195,29 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
+    private boolean isErrorPageRequest(final HttpServletRequest request) {
+        final boolean isError = ObjectUtils.defaultIfNull((Boolean) request.getSession().getAttribute(MFAConstants.MFA_ERROR), false);
+        if (!isError) {
+            return false;
+        }
+        if (StringUtils.equals(request.getRequestURI(), errorPath)) {
+            return true;
+        }
+        final String referer = request.getHeader("Referer");
+        if (StringUtils.isBlank(referer)) {
+            return false;
+        }
+        return StringUtils.equals(URI.create(referer).getPath(), errorPath);
+    }
+
     private boolean isAliasToken(HttpServletRequest request) {
         final String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Basic ")) {
             final String[] atoms = new String(Base64.decode(header.substring(6).getBytes(UTF_8)), UTF_8).split(":");
             if (AliasToken.isAliasFormat(atoms[0])) {
                 final AliasToken alias = aliasTokenService.locateToken(atoms[0]);
-                if (alias != null) {
-                    // We don't care if the token is actually valid at this time.
-                    return true;
-                }
+                // We don't care if the token is actually valid at this time.
+                return alias != null;
             }
         }
         return false;
@@ -198,17 +225,17 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isUriAllowed(String uri) {
         return StringUtils.endsWithAny(uri,
-                "/xapi/mfa/verify",
-                "/scripts/mfa/multifactorAuth.js",
-                "/scripts/mfa/mfaEmailAuth.js",
-                "/scripts/mfa/mfaGoogleAuth.js",
-                "/scripts/mfa/qrcode.min.js",
-                "/style/mfa/multifactorAuth.css",
-                "/style/font-awesome.css",
-                "/xapi/mfa/status",
-                "/xapi/mfa/emailbackup",
-                "/xapi/mfa/preference",
-                "/xapi/mfa/switch_to_email",
-                "/xapi/mfa/send_code");
+                                       "/xapi/mfa/verify",
+                                       "/scripts/mfa/multifactorAuth.js",
+                                       "/scripts/mfa/mfaEmailAuth.js",
+                                       "/scripts/mfa/mfaGoogleAuth.js",
+                                       "/scripts/mfa/qrcode.min.js",
+                                       "/style/mfa/multifactorAuth.css",
+                                       "/style/font-awesome.css",
+                                       "/xapi/mfa/status",
+                                       "/xapi/mfa/emailbackup",
+                                       "/xapi/mfa/preference",
+                                       "/xapi/mfa/switch_to_email",
+                                       "/xapi/mfa/send_code");
     }
 }

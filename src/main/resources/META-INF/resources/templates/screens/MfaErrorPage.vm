@@ -1,0 +1,6 @@
+#set($disabled=true)
+$!data.getTemplateInfo().setLayoutTemplate("Noninteractive.vm")
+<link type="text/css" rel="stylesheet" href="$content.getURI("style/mfa/multifactorAuth.css")">
+<h2>Multi-factor Authentication Failed</h2>
+<p>Per your request, we tried to send a multi-factor authentication request via the configured method, but for some
+    reason this request failed. Please contact the system administrator for more information.</p>
