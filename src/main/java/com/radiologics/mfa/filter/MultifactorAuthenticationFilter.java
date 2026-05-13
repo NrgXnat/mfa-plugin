@@ -114,9 +114,9 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (user.isGuest()) {
-            if (!shortUri.endsWith("/xapi/mfa/verify") && !shortUri.endsWith("/xapi/mfa") &&
-                !shortUri.endsWith("/xapi/mfa/exempt") && (mfaStrategy.getRegistrationTemplatePath().endsWith(shortUri)) ||
-                mfaStrategy.getVerificationTemplatePath().endsWith(shortUri)) {
+            if (!StringUtils.endsWithAny(shortUri, "/xapi/mfa/verify", "/xapi/mfa", "/xapi/mfa/exempt") &&
+                StringUtils.endsWith(mfaStrategy.getRegistrationTemplatePath(), shortUri) ||
+                StringUtils.endsWith(mfaStrategy.getVerificationTemplatePath(), shortUri)) {
                 response.sendRedirect(mfaPreferences.getMfaRedirectPath());
                 return;
             }
@@ -159,7 +159,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
             log.debug("Redirecting to the verification page for the strategy: {}", mfaStrategy.getVerificationTemplatePath());
             // Let them go to the "Verify Token" page
-            if (mfaStrategy.getVerificationTemplatePath().endsWith(shortUri)) {
+            if (StringUtils.endsWith(mfaStrategy.getVerificationTemplatePath(), shortUri)) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -174,7 +174,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             //Find the preferred MFA for the user. If a registration is required,
             //user should be redirected to Registration Page.
             //Each MFA Strategy would have their own Registration Page (if they need one)
-            if (mfaStrategy.needsRegistration() && shortUri.equals(mfaStrategy.getRegistrationTemplatePath())) {
+            if (mfaStrategy.needsRegistration() && StringUtils.equals(shortUri, mfaStrategy.getRegistrationTemplatePath())) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -182,7 +182,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             // Only let the user get the mfa config when mfaTokenVerified and mfaEnabled are false && requireMFA is true
             // (i.e. When MFA is required and the user has just logged in and are setting up MFA)
             // This is the only time someone should be seeing the secret key when they aren't fully authenticated with MFA.
-            if (shortUri.endsWith("/xapi/mfa")) {
+            if (StringUtils.endsWith(shortUri, "/xapi/mfa")) {
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -212,7 +212,8 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isAliasToken(HttpServletRequest request) {
         final String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Basic ")) {
+        if (StringUtils.startsWith(header, "Basic ")) {
+            //noinspection deprecation
             final String[] atoms = new String(Base64.decode(header.substring(6).getBytes(UTF_8)), UTF_8).split(":");
             if (AliasToken.isAliasFormat(atoms[0])) {
                 final AliasToken alias = aliasTokenService.locateToken(atoms[0]);
