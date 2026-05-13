@@ -20,6 +20,7 @@ import com.radiologics.mfa.model.VerifiedTokenResponse;
 import com.radiologics.mfa.preference.MFAPreferences;
 import com.radiologics.mfa.services.MultifactorAuthenticationService;
 import com.radiologics.mfa.strategy.MFAStrategyI;
+import com.radiologics.mfa.strategy.impl.EmailAuthenticationStrategy;
 import com.radiologics.mfa.utils.MFAConstants;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -54,9 +55,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpSession;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Api("Multifactor Authentication Api")
 @XapiRestController
@@ -66,6 +67,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
 
     private final MultifactorAuthenticationService multifactorAuthenticationService;
     private final MFAPreferences mfaPreferences;
+    private final List<String> annotationCodes;
 
     @Autowired
     public MultifactorAuthenticationApi(final UserManagementServiceI userManagementService,
@@ -75,10 +77,11 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
         super(userManagementService, roleHolder);
         this.multifactorAuthenticationService = multifactorAuthenticationService;
         this.mfaPreferences = mfaPreferences;
+        this.annotationCodes = MFAStrategyManager.GetAvailableStrategyAnnotationCodes();
     }
 
     @ApiOperation(response = VerifiedTokenResponse.class, value = "Verifies the MFA token",
-            notes = "Returns the JsessionId and the xnat csrf token for the session.")
+            notes = "Returns the JSESSIONID and the XNAT CSRF token for the session.")
     @XapiRequestMapping(value = "/verify", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.POST)
     public ResponseEntity<VerifiedTokenResponse> verify(@RequestBody TokenPayload tokenPayload, HttpSession httpSession) {
         if (multifactorAuthenticationService.verifyToken(XDAT.getUserDetails().getUsername(), tokenPayload.getToken())) {
@@ -113,9 +116,8 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
         final UserI user = XDAT.getUserDetails();
         MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(user.getUsername());
         mfe.setTempPreferredMfaBackup(mfe.getPreferredMfas());
-        mfe.setPreferredMfas("Email");
+        mfe.setPreferredMfas(EmailAuthenticationStrategy.VECTOR);
         multifactorAuthenticationService.update(mfe);
-        httpSession.setAttribute("EmailBackup", true);
         httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, false);
         if (mfaPreferences.isMfaAdminEmailNotificationEnabled()) {
             sendAlertEmail(user.getUsername());
@@ -134,53 +136,6 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
         }
         mfaPreferences.setRequireMfa(requireMfa);
         mfaPreferences.setRequireAdminMfa(requireAdminMfa);
-
-        //If the Site Admins need MFA, check the hibernate table and set all the Admin Roles to non-exempt
-        Collection<String> allLogins = Users.getAllLogins();
-        for (String aLogin : allLogins) {
-            final MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(aLogin);
-            if (Roles.isSiteAdmin(aLogin)) {
-                if (requireAdminMfa) {
-                    if (null == mfe) {
-                        MultifactorEntity mfeNew = new MultifactorEntity(aLogin);
-                        mfeNew.setMfaRegistered(false);
-                        //Admin needs MFA = Exempted  = false
-                        mfeNew.setMfaExempted(false);
-                        mfeNew.setPreferredMfas(mfaPreferences.getPreferredMFAMethod());
-                        multifactorAuthenticationService.create(mfeNew);
-                    } else {
-                        mfe.setMfaExempted(false);
-                        multifactorAuthenticationService.update(mfe);
-                    }
-                } else { // does not require MFA
-                    if (null != mfe && !mfe.isMfaExempted()) {
-                        mfe.setMfaExempted(true);
-                        multifactorAuthenticationService.update(mfe);
-                    }
-                }
-            } else { //Non admin account
-                if (requireMfa) {
-                    if (null == mfe) {
-                        MultifactorEntity mfeNew = new MultifactorEntity(aLogin);
-                        mfeNew.setMfaRegistered(false);
-                        //Non Admin needs MFA = Exempted  = false
-                        mfeNew.setMfaExempted(false);
-                        mfeNew.setPreferredMfas(mfaPreferences.getPreferredMFAMethod());
-                        multifactorAuthenticationService.create(mfeNew);
-                    } else {
-                        if (mfe != null && mfe.isMfaExempted()) {
-                            mfe.setMfaExempted(false);
-                            multifactorAuthenticationService.update(mfe);
-                        }
-                    }
-                } else {
-                    if (mfe != null && !mfe.isMfaExempted()) {
-                        mfe.setMfaExempted(true);
-                        multifactorAuthenticationService.update(mfe);
-                    }
-                }
-            }
-        }
     }
 
     @ApiOperation(response = MfaModel.class, value = "Returns whether the user has registered for mfa")
@@ -263,7 +218,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
             mfe.setTempPreferredMfaBackup(null);
             mfe.setPreferredMfas(mfaPreferences.getPreferredMFAMethod());
             multifactorAuthenticationService.save(mfe);
-            log.debug("Unregistered Multifactor Authentication for user: " + _username);
+            log.debug("Unregistered Multifactor Authentication for user: {}", _username);
             return new ResponseEntity<>(multifactorAuthenticationService.toPojo(mfe), HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.FORBIDDEN);
@@ -296,31 +251,19 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
     }
 
     @ApiOperation(value = "Sets  the Site wide preferred Multi-factor Authentication Method")
-    @XapiRequestMapping(value = "/preferred/{mfamethod}", method = RequestMethod.POST)
-    public ResponseEntity<Void> setPreferredMFAMethod(@PathVariable final String mfamethod,
+    @XapiRequestMapping(value = "/preferred/{mfaMethod}", method = RequestMethod.POST)
+    public ResponseEntity<Void> setPreferredMFAMethod(@PathVariable final String mfaMethod,
                                                       @RequestParam final boolean switchAll) {
         //Only Admins can set this information
         final UserI user = XDAT.getUserDetails();
         if (Roles.isSiteAdmin(user)) {
-            List<String> annotationCodes = MFAStrategyManager.GetAvailableStrategyAnnotationCodes();
-            //Is it an existing code
-            boolean existing = false;
-            if (annotationCodes.size() > 0) {
-                for (String code : annotationCodes) {
-                    if (code.equals(mfamethod)) {
-                        existing = true;
-                        break;
-                    }
-                }
-            }
-            if (existing) {
-                mfaPreferences.setPreferredMFAMethod(mfamethod);
+            if (annotationCodes.contains(mfaMethod)) {
+                mfaPreferences.setPreferredMFAMethod(mfaMethod);
                 if (switchAll) {
                     //Now is all users are to be switched - update all MFA entries
-                    List mfes = multifactorAuthenticationService.getAllMultifactorEntities();
-                    for (Object m : mfes) {
-                        MultifactorEntity mfe = (MultifactorEntity) m;
-                        mfe.setPreferredMfas(mfamethod);
+                    List<MultifactorEntity> mfes = multifactorAuthenticationService.getAllMultifactorEntities();
+                    for (MultifactorEntity mfe : mfes) {
+                        mfe.setPreferredMfas(mfaMethod);
                         //Users need to register again
                         mfe.setMfaRegistered(false);
                         multifactorAuthenticationService.saveOrUpdate(mfe);
@@ -355,32 +298,15 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
     @ApiOperation(response = String.class, value = "Gets the list of Users exempted from Multi-factor Authentication")
     @XapiRequestMapping(value = "/exempted", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, restrictTo = AccessLevel.Admin)
     public ResponseEntity<String> getMFAExemptedUser() {
-        List mfes = multifactorAuthenticationService.getAllMultifactorEntities();
-        List<MultifactorEntity> exempted = new ArrayList<MultifactorEntity>();
-        if (null != mfes && mfes.size() > 0) {
-            for (Object m : mfes) {
-                MultifactorEntity mfe = (MultifactorEntity) m;
-                if (mfe.isMfaExempted()) {
-                    exempted.add((MultifactorEntity) m);
-                }
-            }
-        }
-
+        List<MultifactorEntity> mfes = multifactorAuthenticationService.getAllMultifactorEntities();
+        List<MultifactorEntity> exempted = mfes == null ? Collections.emptyList() : mfes.stream().filter(MultifactorEntity::isMfaExempted).collect(Collectors.toList());
         return new ResponseEntity<>(buildExemptedMFAUsersJson(exempted, "exempted_users"), HttpStatus.OK);
     }
 
     @ApiOperation(response = String.class, value = "Gets the list of Users from Multi-factor Authentication")
     @XapiRequestMapping(value = "/users", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE, restrictTo = AccessLevel.Admin)
     public ResponseEntity<String> getMFAs() {
-        List mfes = multifactorAuthenticationService.getAllMultifactorEntities();
-        List<MultifactorEntity> users = new ArrayList<MultifactorEntity>();
-        if (null != mfes && mfes.size() > 0) {
-            for (Object m : mfes) {
-                users.add((MultifactorEntity) m);
-            }
-        }
-
-        return new ResponseEntity<>(buildExemptedMFAUsersJson(users, "mfa_users"), HttpStatus.OK);
+        return new ResponseEntity<>(buildExemptedMFAUsersJson(multifactorAuthenticationService.getAllMultifactorEntities(), "mfa_users"), HttpStatus.OK);
     }
 
     @ApiOperation(response = MfaModel.class, value = "Sets a User  as exempted from Multi-factor Authentication")
@@ -413,7 +339,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
 
     @ApiOperation(value = "Sets a CSV Username String  as exempted from Multi-factor Authentication")
     @XapiRequestMapping(value = "/exemptmultiple", method = RequestMethod.POST, restrictTo = AccessLevel.Admin)
-    public ResponseEntity<Void> exemptUsers(@RequestParam(name = "usernames", required = true) final String csvUsernames) {
+    public ResponseEntity<Void> exemptUsers(@RequestParam(name = "usernames") final String csvUsernames) {
         final UserI user = XDAT.getUserDetails();
         if (Roles.isSiteAdmin(user)) {
             String[] usernames = csvUsernames.split(",");
@@ -438,7 +364,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
 
     @ApiOperation(value = "Enforces Multi-factor Authentication for multiple user")
     @XapiRequestMapping(value = "/enforcemfamultiple", method = RequestMethod.POST, restrictTo = AccessLevel.Admin)
-    public ResponseEntity<Void> enforceMFAForMultipleUsers(@RequestParam(name = "usernames", required = true) final String csvUsernames) {
+    public ResponseEntity<Void> enforceMFAForMultipleUsers(@RequestParam(name = "usernames") final String csvUsernames) {
         final UserI user = XDAT.getUserDetails();
 
         if (Roles.isSiteAdmin(user)) {
@@ -468,33 +394,22 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
 
 
     @ApiOperation(value = "Sets  the Preferred Multi-factor Authentication Method for user")
-    @XapiRequestMapping(value = "/preferred/user/{username}/method/{mfamethod}", method = RequestMethod.POST)
+    @XapiRequestMapping(value = "/preferred/user/{username}/method/{mfaMethod}", method = RequestMethod.POST)
     public ResponseEntity<Void> setPreferredMFAMethodForUser(@PathVariable(name = "username") @Username final String username,
-                                                             @PathVariable(name = "mfamethod") String mfamethod) {
+                                                             @PathVariable(name = "mfaMethod") String mfaMethod) {
         final UserI user = XDAT.getUserDetails();
         try {
             UserI requestedUser = Users.getUser(username);
             if (Roles.isSiteAdmin(user) || username.equals(user.getUsername())) {
-                List<String> annotationCodes = MFAStrategyManager.GetAvailableStrategyAnnotationCodes();
-                //Is it an existing code
-                boolean existing = false;
-                if (annotationCodes.size() > 0) {
-                    for (String code : annotationCodes) {
-                        if (code.equals(mfamethod)) {
-                            existing = true;
-                            break;
-                        }
-                    }
-                }
-                if (existing) {
+                if (annotationCodes.contains(mfaMethod)) {
                     MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(requestedUser.getUsername());
                     if (null != mfe) {
-                        mfe.setPreferredMfas(mfamethod);
+                        mfe.setPreferredMfas(mfaMethod);
                         multifactorAuthenticationService.saveOrUpdate(mfe);
                         return new ResponseEntity<>(HttpStatus.OK);
                     } else {
                         mfe = multifactorAuthenticationService.create(new MultifactorEntity(username));
-                        mfe.setPreferredMfas(mfamethod);
+                        mfe.setPreferredMfas(mfaMethod);
                         multifactorAuthenticationService.save(mfe);
                         return new ResponseEntity<>(HttpStatus.OK);
                     }
@@ -503,11 +418,11 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
                     return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
                 }
             } else {
-                log.debug("Insufficient privileges to set preferred MFA " + username);
+                log.debug("Insufficient privileges to set preferred MFA {}", username);
                 return new ResponseEntity<>(HttpStatus.FORBIDDEN);
             }
-        } catch (UserNotFoundException | UserInitException unfe) {
-            log.debug("Invalid Username " + username);
+        } catch (UserNotFoundException | UserInitException e) {
+            log.debug("Invalid Username {}", username);
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
     }
@@ -524,8 +439,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
             }
             users.set(rootNode, usersNode);
             try {
-                String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(users);
-                return json;
+                return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(users);
             } catch (Exception e) {
                 log.error("Could not convert the MFA Methods to JSON: {}", e.getMessage(), e);
             }
@@ -546,8 +460,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
             }
             mfaMethods.set(MFAConstants.MFA_METHODS, mfaMethodsNode);
             try {
-                String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(mfaMethods);
-                return json;
+                return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(mfaMethods);
             } catch (Exception e) {
                 log.error("Could not convert the MFA Methods to JSON: {}", e.getMessage(), e);
             }
@@ -569,7 +482,7 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
         try {
             XDAT.getMailService().sendHtmlMessage(adminEmail, adminEmail, emailSubject, body);
         } catch (Exception e) {
-            log.error("Could not send admin alert Email.", e.getMessage());
+            log.error("Could not send admin alert email.", e);
             throw e;
         }
     }

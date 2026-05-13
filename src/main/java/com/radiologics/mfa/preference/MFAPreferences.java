@@ -9,12 +9,13 @@ package com.radiologics.mfa.preference;
 import com.radiologics.mfa.utils.MFAConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.nrg.framework.configuration.ConfigPaths;
+import org.nrg.framework.services.NrgEventServiceI;
 import org.nrg.framework.utilities.OrderedProperties;
 import org.nrg.prefs.annotations.NrgPreference;
 import org.nrg.prefs.annotations.NrgPreferenceBean;
-import org.nrg.prefs.beans.AbstractPreferenceBean;
 import org.nrg.prefs.exceptions.InvalidPreferenceName;
 import org.nrg.prefs.services.NrgPreferenceService;
+import org.nrg.xdat.preferences.EventTriggeringAbstractPreferenceBean;
 import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -25,18 +26,19 @@ import org.springframework.beans.factory.annotation.Autowired;
         description = "Manages mfa configurations and settings for the XNAT system.",
         properties = "config/mfa/xnat-mfa.properties"
 )
-public class MFAPreferences extends AbstractPreferenceBean {
+public class MFAPreferences extends EventTriggeringAbstractPreferenceBean {
     public static final String MFA_TOOL_ID = "multifactor-auth";
-    public static final String INITIALIZED = "initialized";
-    private SiteConfigPreferences siteConfigPreferences;
+
+    private final SiteConfigPreferences siteConfigPreferences;
 
     @Autowired
     protected MFAPreferences(
             final NrgPreferenceService preferenceService,
+            final NrgEventServiceI eventService,
             ConfigPaths configFolderPaths,
             OrderedProperties initPrefs,
             SiteConfigPreferences siteConfigPreferences) {
-        super(preferenceService, configFolderPaths, initPrefs);
+        super(preferenceService, eventService, configFolderPaths, initPrefs);
         this.siteConfigPreferences = siteConfigPreferences;
     }
 

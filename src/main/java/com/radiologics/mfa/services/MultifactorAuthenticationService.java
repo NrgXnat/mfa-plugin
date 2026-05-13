@@ -28,7 +28,7 @@ public interface MultifactorAuthenticationService extends BaseHibernateService<M
 	MFAStrategyI getPreferredMFAStrategy(String username) throws MFAStrategyNotFoundException;
 	MFAStrategyI getPreferredMFAStrategy(MultifactorEntity mfe) throws MFAStrategyNotFoundException;
 
-	List getAllMultifactorEntities();
+	List<MultifactorEntity> getAllMultifactorEntities();
 	PrincipalContactInformation getPrincipalContactInformation(UserI user);
 
 	Boolean isMFARequired(String username);

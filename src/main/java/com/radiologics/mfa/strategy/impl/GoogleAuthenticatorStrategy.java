@@ -18,10 +18,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 
 @Slf4j
-@MFAHandler(handler = "GoogleAuthenticator")
+@MFAHandler(handler = GoogleAuthenticatorStrategy.VECTOR)
 public class GoogleAuthenticatorStrategy extends AbstractMFAStrategy implements MFAStrategyI {
+    public static final String VECTOR = "GoogleAuthenticator";
+
     public GoogleAuthenticatorStrategy() {
-        super("Google Authenticator", true);
+        super(VECTOR, true);
     }
 
     @Override

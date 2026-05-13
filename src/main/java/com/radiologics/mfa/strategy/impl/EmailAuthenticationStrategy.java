@@ -22,10 +22,12 @@ import java.util.Collections;
 import java.util.List;
 
 @Slf4j
-@MFAHandler(handler = "Email")
+@MFAHandler(handler = EmailAuthenticationStrategy.VECTOR)
 public class EmailAuthenticationStrategy extends AbstractMFAStrategy implements MFAStrategyI {
-    public EmailAuthenticationStrategy () {
-        super("email", false);
+    public static final String VECTOR = "Email";
+
+    public EmailAuthenticationStrategy() {
+        super(VECTOR, false);
     }
 
     @Override

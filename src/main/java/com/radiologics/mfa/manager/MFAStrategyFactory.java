@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 public class MFAStrategyFactory {
 
 	//TODO = Improve this as this will be queried too often
-	public static MFAStrategyI GetMFAStrategyByMFAHandlerAnnotation(String mfahandler) throws MFAStrategyNotFoundException{
+	public static MFAStrategyI GetMFAStrategyByMFAHandlerAnnotation(String mfaHandler) throws MFAStrategyNotFoundException{
 		List<MFAStrategyI> mfaStrategies = null;
 		MFAStrategyI mfaStrategy = null;
 		try {
@@ -39,7 +39,7 @@ public class MFAStrategyFactory {
 	    for (MFAStrategyI e : mfaStrategies) {
 	        final MFAHandler annotation = e.getClass().getAnnotation(MFAHandler.class);
 	        if (annotation != null) {
-	        	if (mfahandler.equals(annotation.handler())) {
+	        	if (mfaHandler.equals(annotation.handler())) {
 	        		mfaStrategy = e;
 	        		break;
 	        	}
@@ -47,8 +47,8 @@ public class MFAStrategyFactory {
 
 	    }
 	    if (null == mfaStrategy) {
-	        log.trace("No MFA Strategy for " + mfahandler);
-	        throw new MFAStrategyNotFoundException("No MFA Strategy for  " + mfahandler,new IllegalArgumentException());
+            log.trace("No MFA Strategy for {}", mfaHandler);
+	        throw new MFAStrategyNotFoundException("No MFA Strategy for  " + mfaHandler,new IllegalArgumentException());
 	    }
 	    return mfaStrategy;
 	}

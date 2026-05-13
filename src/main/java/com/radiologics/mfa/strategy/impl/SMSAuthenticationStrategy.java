@@ -11,7 +11,7 @@ import com.amazonaws.services.sns.AmazonSNSClient;
 import com.amazonaws.services.sns.model.MessageAttributeValue;
 import com.amazonaws.services.sns.model.PublishRequest;
 import com.amazonaws.services.sns.model.PublishResult;
-import com.google.common.collect.Maps;
+import com.radiologics.mfa.annotation.MFAHandler;
 import com.radiologics.mfa.entities.MultifactorEntity;
 import com.radiologics.mfa.principal.PrincipalContactInformation;
 import com.radiologics.mfa.strategy.MFAStrategyI;
@@ -21,12 +21,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.jboss.aerogear.security.otp.Totp;
 import org.jboss.aerogear.security.otp.api.Clock;
 
+import java.util.HashMap;
 import java.util.Map;
 
+@MFAHandler(handler = SMSAuthenticationStrategy.VECTOR)
 @Slf4j
 public class SMSAuthenticationStrategy extends AbstractMFAStrategy implements MFAStrategyI {
+    public static final String VECTOR = "SMS";
+
     public SMSAuthenticationStrategy() {
-        super("SMS", false);
+        super(VECTOR, false);
     }
 
     @Override
@@ -41,7 +45,7 @@ public class SMSAuthenticationStrategy extends AbstractMFAStrategy implements MF
     private void sendSMSMessage(String message, String phoneNumber) {
         //noinspection deprecation
         final AmazonSNSClient                    snsClient             = new AmazonSNSClient();
-        final Map<String, MessageAttributeValue> smsAttributes         = Maps.newHashMap();
+        final Map<String, MessageAttributeValue> smsAttributes         = new HashMap<>();
         final MessageAttributeValue              messageAttributeValue = new MessageAttributeValue().withStringValue("Transactional").withDataType("String");
 
         smsAttributes.put("AWS.SNS.SMS.SMSType", messageAttributeValue);

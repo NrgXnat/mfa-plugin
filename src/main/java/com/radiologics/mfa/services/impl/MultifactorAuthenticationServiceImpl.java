@@ -141,7 +141,7 @@ public class MultifactorAuthenticationServiceImpl extends AbstractHibernateEntit
     public String getPreferredMFAMethod(MultifactorEntity mfe) {
         String userOveriddenPreferredMethod = mfaPreferences.getPreferredMFAMethod();
         if (null == mfe) {
-            log.debug("MFE is null - Returning UserOveriddenPreferredMethod: " + userOveriddenPreferredMethod);
+            log.debug("MFE is null - Returning UserOveriddenPreferredMethod: {}", userOveriddenPreferredMethod);
             return userOveriddenPreferredMethod;
         }
         userOveriddenPreferredMethod = mfe.getPreferredMfas();
@@ -184,7 +184,7 @@ public class MultifactorAuthenticationServiceImpl extends AbstractHibernateEntit
             UserRegistrationData userRegistrationData = userRegistrationDataService.getUserRegistrationData(user);
             log.debug(" User Registration data is null {}", (null == userRegistrationData));
             if (null != userRegistrationData) {
-                log.debug("Looking up phone number " + userRegistrationData.getPhone());
+                log.debug("Looking up phone number {}", userRegistrationData.getPhone());
                 contact.setPhonenumber(userRegistrationData.getPhone());
             }
             log.debug("After setting the registration {}", contact.getPhonenumber());

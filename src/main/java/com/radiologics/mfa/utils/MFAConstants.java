@@ -8,7 +8,6 @@
 package com.radiologics.mfa.utils;
 
 public class MFAConstants {
-
     public static final String MFA_PREFERRED                      = "mfaPreferred"; //Expected in Site Config
     public static final String MFA_SITE_CONFIG_REQUIRE_MFA        = "requireMfa"; //Expected in Site Config
     public static final String MFA_SITE_CONFIG_ADMIN_REQUIRE_MFA  = "requireAdminMfa"; //Expected in Site Config
