@@ -7,7 +7,7 @@
  
 buildscript {
     ext {
-        vXnat    = "1.9.0"
+        vXnat    = "1.10.1-SNAPSHOT"
     }
 }
 
@@ -18,8 +18,8 @@ plugins {
     id "maven-publish"
     id "com.palantir.git-version" version "3.0.0"
     id "io.franzbecker.gradle-lombok" version "5.0.0"
-    id "net.linguica.maven-settings" version "0.5"
     id "org.nrg.xnat.build.xnat-data-builder" version "${vXnat}"
+    id "io.spring.dependency-management" version "1.1.7"
 }
 
 group "com.radiologics"
@@ -33,9 +33,20 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        mavenBom "org.nrg:parent:${vXnat}"
+    }
+}
+
+lombok {
+    version = "1.18.34"
+    sha256 = "1ea5ad6c6afcff902d75072b2aaa6695585aebee9f12127e15c0036ba95d2918"
+}
+
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
     withSourcesJar()
     withJavadocJar()
 }
@@ -55,6 +66,17 @@ configurations {
     implementation.extendsFrom(implementAndInclude)
 }
 
+// Exclude legacy transitive deps no longer resolvable (Sun commercial jars,
+// pre-2007 artifacts) brought in by log4j 1.x and similar. See monorepo
+// xnat-web/build.gradle for the full pattern.
+configurations.all {
+    exclude group: 'com.sun.jdmk',        module: 'jmxtools'
+    exclude group: 'com.sun.jmx',         module: 'jmxri'
+    exclude group: 'javax.jms',           module: 'jms'
+    exclude group: 'javax.sql',           module: 'jdbc-stdext'
+    exclude group: 'javax.transaction',   module: 'jta'
+}
+
 dependencies {
     api platform("org.nrg:parent:${vXnat}")
     implementation platform("org.nrg:parent:${vXnat}")
@@ -67,7 +89,6 @@ dependencies {
         exclude group: "*"
     }
 
-    implementation "org.nrg.xnat:xnat-data-models"
     implementation "org.nrg:prefs"
     implementation "org.nrg:mail"
     implementation "org.nrg:framework"
@@ -78,9 +99,13 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind"
     implementation "com.amazonaws:aws-java-sdk-sns:1.11.901"
     implementation "com.amazonaws:aws-java-sdk-core:1.11.901"
-    implementation "turbine:turbine"
-    implementation "org.apache.velocity:velocity"
-    implementation "javax.servlet:javax.servlet-api"
+    implementation("turbine:turbine") {
+        // transitive deps not in monorepo BOM / no longer in any reachable repo
+        exclude group: "velocity", module: "texen"
+        exclude group: "jamon", module: "jamon"
+    }
+    compileOnly "org.apache.velocity:velocity"
+    compileOnly "javax.servlet:javax.servlet-api"
 
     implementAndInclude "org.jboss.aerogear:aerogear-otp-java:1.0.0"
 }
@@ -194,11 +219,19 @@ publishing {
             }
         }
     }
-    repositories{ 
+    repositories {
         maven {
-            url "https://nrgxnat.jfrog.io/nrgxnat/libs-${project.version.endsWith("-SNAPSHOT") ? "snapshot" : "release"}"
-            // The value for name must match <id> in ~/.m2/settings.xml
             name = "XNAT_Artifactory"
+            url = project.version.toString().endsWith("-SNAPSHOT")
+                ? "https://nrgxnat.jfrog.io/nrgxnat/libs-snapshot-local"
+                : "https://nrgxnat.jfrog.io/nrgxnat/libs-release-local"
+            // CI injects ORG_GRADLE_PROJECT_artifactoryUser/Token env vars (Gradle maps
+            // these to project properties). Local devs can set artifactoryUser/Token in
+            // ~/.gradle/gradle.properties. Mirrors monorepo's buildSrc convention.
+            credentials {
+                username = (project.findProperty("artifactoryUser")  ?: System.getenv("ARTIFACTORY_USER"))  ?: ""
+                password = (project.findProperty("artifactoryToken") ?: System.getenv("ARTIFACTORY_TOKEN")) ?: ""
+            }
         }
     }
 }
