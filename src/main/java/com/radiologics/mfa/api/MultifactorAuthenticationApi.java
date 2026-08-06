@@ -53,8 +53,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import javax.mail.MessagingException;
-import javax.servlet.http.HttpSession;
+import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpSession;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;

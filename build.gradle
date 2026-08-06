@@ -7,7 +7,7 @@
  
 buildscript {
     ext {
-        vXnat    = "1.10.1-SNAPSHOT"
+        vXnat    = "1.11.0-SNAPSHOT"   // jakarta / Tomcat 10 line
     }
 }
 
@@ -27,7 +27,9 @@ version "1.6.0-SNAPSHOT"
 description "XNAT Multi-Factor Authentication plugin"
 
 repositories {
-    mavenLocal()
+    // Scope mavenLocal to org.nrg.* so a locally-published SNAPSHOT of core is consumed without shadowing
+    // partial third-party artifacts (e.g. ehcache-*-jakarta classifiers). See migration guide.
+    mavenLocal { content { includeGroupByRegex 'org\\.nrg.*' } }
     maven { url "https://nrgxnat.jfrog.io/nrgxnat/libs-release" }
     maven { url "https://nrgxnat.jfrog.io/nrgxnat/libs-snapshot" }
     mavenCentral()
@@ -45,8 +47,8 @@ lombok {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    // toolchain (not sourceCompatibility) so the build works on any default JDK — matches container-service.
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
     withSourcesJar()
     withJavadocJar()
 }
@@ -81,32 +83,40 @@ dependencies {
     api platform("org.nrg:parent:${vXnat}")
     implementation platform("org.nrg:parent:${vXnat}")
 
-    implementation ("org.nrg.xnat:web") {
-        exclude group: "*"
-    }
-    
-    implementation ("org.nrg.xdat:core") {
-        exclude group: "*"
-    }
+    // Provided by XNAT at runtime.
+    compileOnly "org.nrg.xnat:web"
+    compileOnly "org.nrg.xdat:core"
+    // xnat-data-models merged into org.nrg.xnat:web in 1.11.0 (guide §3) -> removed.
+    compileOnly "org.nrg:prefs"
+    compileOnly "org.nrg:mail"
+    compileOnly "org.nrg:framework"
+    compileOnly "org.springframework.security:spring-security-web"
+    compileOnly "org.springframework.security:spring-security-config"
+    compileOnly "org.springframework:spring-tx"
+    compileOnly "org.springframework:spring-web"
+    compileOnly "org.springframework:spring-webmvc"
+    compileOnly "org.springframework:spring-context"
+    compileOnly "com.fasterxml.jackson.core:jackson-databind"
+    compileOnly "com.fasterxml.jackson.core:jackson-annotations"
 
-    implementation "org.nrg:prefs"
-    implementation "org.nrg:mail"
-    implementation "org.nrg:framework"
-    implementation "org.springframework.security:spring-security-web"
-    implementation "org.springframework.security:spring-security-config"
-    implementation "org.springframework:spring-tx"
-    implementation "io.springfox:springfox-swagger2"
-    implementation "com.fasterxml.jackson.core:jackson-databind"
-    implementation "com.amazonaws:aws-java-sdk-sns:1.11.901"
-    implementation "com.amazonaws:aws-java-sdk-core:1.11.901"
-    implementation("turbine:turbine") {
-        // transitive deps not in monorepo BOM / no longer in any reachable repo
-        exclude group: "velocity", module: "texen"
-        exclude group: "jamon", module: "jamon"
-    }
-    compileOnly "org.apache.velocity:velocity"
-    compileOnly "javax.servlet:javax.servlet-api"
+    // 1.11.0 coordinate renames: turbine:turbine -> org.apache.turbine:turbine (7.0),
+    // org.apache.velocity:velocity -> org.apache.velocity:velocity-engine-core (2.4.1)
+    compileOnly "org.apache.turbine:turbine"
+    compileOnly "org.apache.velocity:velocity-engine-core"
 
+    // jakarta APIs (javax.* -> jakarta.* in source): servlet (filter/api), persistence (entity), mail (api).
+    compileOnly "jakarta.servlet:jakarta.servlet-api"
+    compileOnly "jakarta.persistence:jakarta.persistence-api"
+    compileOnly "jakarta.mail:jakarta.mail-api"
+
+    // springfox is dead on Spring 6; source only uses io.swagger.annotations.* -> provide those directly.
+    compileOnly "io.swagger:swagger-annotations:1.5.20"
+
+    // AWS SNS for SMS delivery: not provided by XNAT core (kept off the bundle, as in the original).
+    compileOnly "com.amazonaws:aws-java-sdk-sns:1.11.901"
+    compileOnly "com.amazonaws:aws-java-sdk-core:1.11.901"
+
+    // OTP generator for Google Authenticator — bundled into the plugin jar.
     implementAndInclude "org.jboss.aerogear:aerogear-otp-java:1.0.0"
 }
 
@@ -137,7 +147,10 @@ try {
 
 compileJava {
     dependsOn xnatDataBuilder
-    options.fork = false
+    options.fork = true   // a cross-JDK toolchain (21) must fork
+    // Spring 6 no longer recovers method parameter names from bytecode; the xapi @RestController's
+    // @RequestParam/@PathVariable args resolve only when compiled with -parameters.
+    options.compilerArgs << '-parameters'
 }
 
 jar {
