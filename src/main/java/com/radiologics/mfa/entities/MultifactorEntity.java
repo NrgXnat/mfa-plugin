@@ -7,10 +7,10 @@ package com.radiologics.mfa.entities;
 import org.jboss.aerogear.security.otp.api.Base32;
 import org.nrg.framework.orm.hibernate.AbstractHibernateEntity;
 
-import javax.persistence.Access;
-import javax.persistence.AccessType;
-import javax.persistence.Column;
-import javax.persistence.Entity;
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
 
 @Entity
 @Access(AccessType.FIELD)

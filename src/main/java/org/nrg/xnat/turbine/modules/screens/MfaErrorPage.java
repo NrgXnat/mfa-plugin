@@ -7,7 +7,7 @@
 package org.nrg.xnat.turbine.modules.screens;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.turbine.util.RunData;
+import org.apache.turbine.pipeline.PipelineData;
 import org.apache.velocity.context.Context;
 import org.nrg.xdat.turbine.modules.screens.SecureScreen;
 
@@ -15,12 +15,12 @@ import org.nrg.xdat.turbine.modules.screens.SecureScreen;
 @Slf4j
 public class MfaErrorPage extends SecureScreen {
     @Override
-    protected void doBuildTemplate(final RunData data, final Context context) {
+    protected void doBuildTemplate(final PipelineData data, final Context context) {
         log.debug("Building MFA error page");
     }
 
     @Override
-    protected boolean isAuthorized(final RunData data) {
+    protected boolean isAuthorized(final PipelineData data) {
         return true;
     }
 }

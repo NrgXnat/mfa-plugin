@@ -6,17 +6,17 @@
 
 package org.nrg.xnat.turbine.modules.screens;
 
-import org.apache.turbine.util.RunData;
+import org.apache.turbine.pipeline.PipelineData;
 import org.apache.velocity.context.Context;
 import org.nrg.xdat.turbine.modules.screens.SecureScreen;
 
 public class MfaGoogleAuthenticatorVerify extends SecureScreen {
 
 	@Override
-	protected void doBuildTemplate(RunData data, Context context) {}
+	protected void doBuildTemplate(PipelineData pipelineData, Context context) {}
 
     @Override
-    protected boolean isAuthorized(RunData data) {
+    protected boolean isAuthorized(PipelineData pipelineData) {
         return true;
     }
 
