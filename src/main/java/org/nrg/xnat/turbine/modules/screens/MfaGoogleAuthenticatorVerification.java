@@ -10,15 +10,14 @@ import org.apache.turbine.util.RunData;
 import org.apache.velocity.context.Context;
 import org.nrg.xdat.turbine.modules.screens.SecureScreen;
 
-public class MfaEmailVerify extends SecureScreen {
+public class MfaGoogleAuthenticatorVerification extends SecureScreen {
 
 	@Override
-	protected void doBuildTemplate(RunData data, Context context)
-		throws Exception {
-	}
+	protected void doBuildTemplate(RunData data, Context context) {}
 
     @Override
     protected boolean isAuthorized(RunData data) {
         return true;
     }
+
 }

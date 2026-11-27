@@ -108,6 +108,18 @@ dependencies {
     compileOnly "javax.servlet:javax.servlet-api"
 
     implementAndInclude "org.jboss.aerogear:aerogear-otp-java:1.0.0"
+
+    testImplementation "junit:junit"
+    testImplementation "org.mockito:mockito-core"
+    testImplementation "org.springframework:spring-test"
+    testImplementation "javax.servlet:javax.servlet-api"
+}
+
+test {
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
 }
 
 // Pulls in the Jenkins BUILD_NUMBER environment variable if available.
@@ -182,6 +194,11 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+
+            // The installable plugin jar. components.java covers only the plain library jar, which XNAT loads as a
+            // plugin and then fails on at the first login, because the dependencies declared implementAndInclude
+            // are not in it.
+            artifact tasks.named("xnatPluginJar")
 
             versionMapping {
                 usage("java-api") {

@@ -13,7 +13,7 @@ import org.nrg.xdat.turbine.modules.screens.SecureScreen;
 
 @SuppressWarnings("unused")
 @Slf4j
-public class MfaErrorPage extends SecureScreen {
+public class MfaVerificationError extends SecureScreen {
     @Override
     protected void doBuildTemplate(final RunData data, final Context context) {
         log.debug("Building MFA error page");

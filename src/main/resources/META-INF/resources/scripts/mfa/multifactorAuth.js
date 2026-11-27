@@ -36,7 +36,7 @@ XNAT.app = getObject(XNAT.app || {});
         },
         switchToEmail: function () {
             $.post( { url : serverRoot+'/xapi/mfa/switch_to_email?XNAT_CSRF='+csrfToken}).done(function(res){
-                window.location=serverRoot+"/app/template/index.vm";
+                window.location=serverRoot+"/app/template/Index.vm";
             });
         },
         renderGoogleAuthSetup:function(){

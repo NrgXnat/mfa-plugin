@@ -14,6 +14,43 @@ This is an XNAT plugin to enable Multifactor Authentication (MFA) via
 * Google Authenticator MFA needs a device registration step, whereas EMAIL and SMS do not require any device registration.
 * Phone number for SMS ought to be entered as '+' then the country's calling code and phone number. E.g. `+19998887777`
 
+### Running behind a proxy that terminates TLS ###
+
+Tell Tomcat that the proxy terminated TLS. Otherwise Tomcat believes the request arrived over plain HTTP and builds
+`http://` redirects, and because XNAT 1.10.1 and later send `Content-Security-Policy: form-action 'self'`, the browser
+refuses to follow such a redirect after a form submission. The login page then sits at "Submitting..." and the browser
+console reports that the form submission violates the `form-action` directive.
+
+Have the proxy pass the original scheme and port:
+
+```
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_set_header X-Forwarded-Port  $server_port;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header Host              $host;
+```
+
+and have Tomcat read them, by adding this valve to the `<Host>` element in `server.xml`:
+
+```
+<Valve className="org.apache.catalina.valves.RemoteIpValve"
+       remoteIpHeader="x-forwarded-for"
+       protocolHeader="x-forwarded-proto"
+       portHeader="x-forwarded-port" />
+```
+
+This affects every XNAT redirect, not just MFA, but MFA shows it first because logging in is the first thing that
+redirects after a form submission.
+
+### Password resets and expired passwords ###
+
+* A user who follows a "forgot password" or account reactivation link sets their new password before being asked for a
+  multi-factor code. The link itself proves they control the account's email. XNAT ends the session as soon as the
+  password changes, so they log in again afterwards and pass MFA then. Until the password changes, that session can
+  reach nothing else.
+* A user whose password has expired passes MFA first and then changes their password, because XNAT shows them the home
+  page as soon as the new password is saved.
+
 User Interface:
 
 [Admin user] Administer -> Plugin Settings -> Multifactor Authentication

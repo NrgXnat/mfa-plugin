@@ -1,4 +1,4 @@
-<script type="text/javascript" src="/scripts/mfa/multifactorAuth.js"></script>
+<script type="text/javascript" src="$content.getURI("/scripts/mfa/multifactorAuth.js")"></script>
 <script type="text/javascript">
 
 $(document).ready(function() {
@@ -14,7 +14,7 @@ $(document).ready(function() {
 				footer: false,
 				contents: {
 				    mfaStyleSheet: {
-					tag: 'link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuthUserProfile.css'
+					tag: 'link|rel=stylesheet|type=text/css|href=$content.getURI("/style/mfa/multifactorAuth.css")'
 				    },
 				    authenticatorSetup:{
 					tag: 'div#authenticator-setup',
