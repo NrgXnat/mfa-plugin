@@ -38,8 +38,12 @@ jobs:
       artifact-name: 'mfa-plugin-jar'
 
       # ──── JFrog ────
-      # On any push to a triggered branch: publish. On dispatch: only when publish_jfrog ticked.
-      publish-jfrog: ${{ github.event_name == 'push' || inputs.publish_jfrog }}
+      # On any push to a triggered branch: publish. On dispatch: only when publish_jfrog ticked. Never for a pull
+      # request. This reads github.event.inputs rather than inputs because the inputs context exists only for
+      # workflow_dispatch and workflow_call; naming it here fails the run at startup for any other event, before a
+      # job can start. github.event.inputs is part of the event payload, so it is null rather than an error, and its
+      # values are strings.
+      publish-jfrog: ${{ github.event_name == 'push' || github.event.inputs.publish_jfrog == 'true' }}
 
       # publish-ghcr deliberately omitted — defaults to false in the reusable workflow.
 
