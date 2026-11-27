@@ -10,6 +10,14 @@ on:
       - main
       - develop
       - 'releases/*'   # RC / release branches, e.g. releases/1.6.0-rc
+  # Build and test pull requests against those branches too, so a change is checked before it is merged rather
+  # than on the merge commit that also publishes it. Nothing is published for a pull request: publish-jfrog below
+  # is false for any event that isn't a push.
+  pull_request:
+    branches:
+      - main
+      - develop
+      - 'releases/*'
   workflow_dispatch:
     inputs:
       publish_jfrog:
