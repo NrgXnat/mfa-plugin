@@ -33,6 +33,12 @@ jobs:
   build-publish:
     uses: NrgXnat/xnat-ci-workflows/.github/workflows/gradle-build-publish.yml@v1
     with:
+      # ──── Build ────
+      # The default task is 'build', which produces the plain library jar. XNAT installs the jar from the
+      # xnatPluginJar task, which also bundles the dependencies declared implementAndInclude. Without it the
+      # build produces nothing installable.
+      gradle-build-task: 'build xnatPluginJar'
+
       # ──── Artifact ────
       artifact-glob: 'build/libs/*.jar'
       artifact-name: 'mfa-plugin-jar'

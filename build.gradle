@@ -195,6 +195,11 @@ publishing {
         mavenJava(MavenPublication) {
             from components.java
 
+            // The installable plugin jar. components.java covers only the plain library jar, which XNAT loads as a
+            // plugin and then fails on at the first login, because the dependencies declared implementAndInclude
+            // are not in it.
+            artifact tasks.named("xnatPluginJar")
+
             versionMapping {
                 usage("java-api") {
                     fromResolutionOf("runtimeClasspath")
