@@ -108,6 +108,18 @@ dependencies {
     compileOnly "javax.servlet:javax.servlet-api"
 
     implementAndInclude "org.jboss.aerogear:aerogear-otp-java:1.0.0"
+
+    testImplementation "junit:junit"
+    testImplementation "org.mockito:mockito-core"
+    testImplementation "org.springframework:spring-test"
+    testImplementation "javax.servlet:javax.servlet-api"
+}
+
+test {
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
 }
 
 // Pulls in the Jenkins BUILD_NUMBER environment variable if available.

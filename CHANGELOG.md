@@ -2,6 +2,42 @@
 
 The MFA Plugin enables XNAT to require multi-factor authentication for users via multiple channels. 
 
+## MFA Plugin Version 1.6.0
+Unreleased
+
+**Bugfixes**
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Let users with MFA reset their password. The MFA filter caught
+  the submission from the "forgot password" page, so the password was never changed, and the filter and XNAT's
+  expired-password filter redirected each other's pages until the verification page's own scripts failed to load,
+  leaving a page with no box to enter the code in. The two filters now agree on which pages a user who must change
+  their password can reach, and MFA is held until the password has been changed.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Ask users whose password has expired for their code before
+  sending them to the password page, instead of leaving them in the same loop.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Send one code per login. A page makes several requests at once,
+  and each code replaced the one before it, so users received several codes of which only the last one worked.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Serve XNAT's scripts and stylesheets to users who have not yet
+  passed MFA. The MFA pages are ordinary XNAT pages and could only draw their form if the browser already had those
+  files in its cache, so they failed in a new or private browser window.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Add the deployment's context path to every redirect, and match
+  the MFA pages by their exact path. On an installation under a path such as `/xnat`, redirects went outside the
+  application and the MFA pages were redirected to themselves.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Stop building redirects from the site URL. When the site URL did
+  not match the host the user browsed to, the browser blocked the redirect after the login form was submitted and the
+  page sat at "Submitting...".
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Fix the error thrown when a user whose method is email or SMS
+  follows an email verification link, and when the site-wide method is email and a visitor loads the login page.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Load the plugin's stylesheets and scripts correctly on
+  installations under a context path, and point the user profile page at a stylesheet that exists.
+* [#3](https://github.com/NrgXnat/mfa-plugin/issues/3) Stop the "Refreshing data type cache" message from sitting over
+  the MFA pages. The verification pages are now named `MfaEmailVerification.vm`, `MfaSMSVerification.vm`,
+  `MfaGoogleAuthenticatorVerification.vm` and `MfaVerificationError.vm`, which XNAT recognises as login pages that
+  should not load the data type cache.
+* Fix "receive an authentication code via email" on the Google Authenticator page. The code was sent, but the user
+  was put straight back on the Google Authenticator page, where the emailed code could not work. The switch now lasts
+  for the rest of the session, and the user's own method comes back the next time they log in.
+* Hide the read-only "MFA Registered" switch for users whose method has nothing to register.
+
+
 ## MFA Plugin Version 1.5.0
 Released 2025-07-25
 

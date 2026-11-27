@@ -16,7 +16,6 @@ import org.nrg.prefs.annotations.NrgPreferenceBean;
 import org.nrg.prefs.exceptions.InvalidPreferenceName;
 import org.nrg.prefs.services.NrgPreferenceService;
 import org.nrg.xdat.preferences.EventTriggeringAbstractPreferenceBean;
-import org.nrg.xdat.preferences.SiteConfigPreferences;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Slf4j
@@ -29,17 +28,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class MFAPreferences extends EventTriggeringAbstractPreferenceBean {
     public static final String MFA_TOOL_ID = "multifactor-auth";
 
-    private final SiteConfigPreferences siteConfigPreferences;
-
     @Autowired
     protected MFAPreferences(
             final NrgPreferenceService preferenceService,
             final NrgEventServiceI eventService,
             ConfigPaths configFolderPaths,
-            OrderedProperties initPrefs,
-            SiteConfigPreferences siteConfigPreferences) {
+            OrderedProperties initPrefs) {
         super(preferenceService, eventService, configFolderPaths, initPrefs);
-        this.siteConfigPreferences = siteConfigPreferences;
     }
 
     @NrgPreference(defaultValue = "false")
@@ -99,9 +94,19 @@ public class MFAPreferences extends EventTriggeringAbstractPreferenceBean {
         return getValue("mfa.email.adminAlertTextTemplate");
     }
 
+    /**
+     * Returns the path users are sent to once multi-factor authentication is complete.
+     *
+     * <p>This is a path within the application, with no site URL and no context path. Callers redirecting to it add
+     * the request's own context path. Building an absolute URL from the site URL here sent users to a different origin
+     * whenever the site URL didn't match the host they browsed to, and XNAT's content security policy blocks that
+     * after a form submission.</p>
+     *
+     * @return The path to redirect to after multi-factor authentication.
+     */
     @NrgPreference(property = "mfa.redirectPath")
     public String getMfaRedirectPath() {
-        return siteConfigPreferences.getSiteUrl()+getValue("mfa.redirectPath");
+        return getValue("mfa.redirectPath");
     }
 
     @NrgPreference(property = "mfa.preferred")

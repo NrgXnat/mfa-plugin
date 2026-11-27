@@ -118,6 +118,9 @@ public class MultifactorAuthenticationApi extends AbstractXapiRestController {
         mfe.setTempPreferredMfaBackup(mfe.getPreferredMfas());
         mfe.setPreferredMfas(EmailAuthenticationStrategy.VECTOR);
         multifactorAuthenticationService.update(mfe);
+        // Mark the session as using the backup, so that the filter leaves the switch in place until the session ends
+        // rather than putting the user's own method back on the very next request.
+        httpSession.setAttribute(MFAConstants.MFA_EMAIL_BACKUP_SESSION, true);
         httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, false);
         if (mfaPreferences.isMfaAdminEmailNotificationEnabled()) {
             sendAlertEmail(user.getUsername());

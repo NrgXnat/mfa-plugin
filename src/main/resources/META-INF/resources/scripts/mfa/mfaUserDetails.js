@@ -25,7 +25,7 @@ XNAT.app = getObject(XNAT.app || {});
                     tag: "div#mfa-message.message.hidden"
                 },
                 mfaStyleSheet: {
-                    tag: "link|rel=stylesheet|type=text/css|href=/style/mfa/multifactorAuth.css"
+                    tag: 'link|rel=stylesheet|type=text/css|href=' + serverRoot + '/style/mfa/multifactorAuth.css'
                 },
                 mfaSettings: {
                     tag: "div#mfa-user-details",
@@ -69,7 +69,7 @@ XNAT.app = getObject(XNAT.app || {});
                                 },
                                 registeredDescription: {
                                     tag: "div.description",
-                                    contents: "If user has registered for MFA authentication."
+                                    contents: "Whether the user has registered a device for multi-factor authentication. This is read-only: use \"Reset User Secret\" to make the user register again."
                                 },
                             }
                         },
@@ -117,6 +117,12 @@ XNAT.app = getObject(XNAT.app || {});
             XNAT.app.mfa.userDetails.toggleMessage();
             $("#exempt-mfa-user").checked(mfaObj.mfaExempted);
             $("#registered-mfa-user").checked(mfaObj.mfaRegistered);
+
+            // Only methods that pair with a device, such as Google Authenticator, are ever registered. For the email
+            // and SMS methods there is nothing to register, so the switch would always read "Not Registered".
+            if (!mfaObj.mfaNeedsDeviceRegistration) {
+                $("#registered-mfa-user").closest(".mfa-setting").hide();
+            }
 
             XNAT.xhr.get( { url :  XNAT.url.csrfUrl('/xapi/mfa/methods') }).done(function(methods, statusText, xhr){
                 XNAT.app.mfa.userDetails.initMethods(methods, mfaObj.mfaPreferred)
