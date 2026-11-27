@@ -1,5 +1,6 @@
 package org.apache.turbine.app.xnat.modules.screens;
 
+import com.radiologics.mfa.entities.MultifactorEntity;
 import com.radiologics.mfa.services.MultifactorAuthenticationService;
 import com.radiologics.mfa.strategy.MFAStrategyI;
 import lombok.extern.slf4j.Slf4j;
@@ -44,10 +45,14 @@ public class VerifyEmail extends org.nrg.xnat.turbine.modules.screens.VerifyEmai
             if (!mfaService.isMFARequired(user.getUsername())) {
                 return null;
             }
-            final MFAStrategyI strategy = mfaService.getPreferredMFAStrategy(user.getUsername());
-            final String       path     = strategy.needsRegistration()
-                                          ? strategy.getRegistrationTemplatePath()
-                                          : strategy.getVerificationTemplatePath();
+            // The same rule the MFA filter applies, so that a user who has already registered a device isn't sent to
+            // the registration page only to be redirected away from it again.
+            final MultifactorEntity mfe        = mfaService.getMultifactorAuth(user.getUsername());
+            final MFAStrategyI      strategy   = mfaService.getPreferredMFAStrategy(mfe);
+            final boolean           registered = mfe != null && mfe.isMfaRegistered();
+            final String            path       = strategy.needsRegistration() && !registered
+                                                 ? strategy.getRegistrationTemplatePath()
+                                                 : strategy.getVerificationTemplatePath();
             if (StringUtils.isBlank(path)) {
                 return null;
             }

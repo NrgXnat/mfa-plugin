@@ -6,7 +6,6 @@ package com.radiologics.mfa.filter;
 
 import com.radiologics.mfa.entities.MultifactorEntity;
 import com.radiologics.mfa.exception.MFAStrategyNotFoundException;
-import com.radiologics.mfa.manager.MFAStrategyManager;
 import com.radiologics.mfa.preference.MFAPreferences;
 import com.radiologics.mfa.services.MultifactorAuthenticationService;
 import com.radiologics.mfa.strategy.MFAStrategyI;
@@ -32,10 +31,11 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -52,6 +52,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * their password to the password page. Without coordination the two filters redirect each other's pages in a loop, and
  * neither the password change nor the MFA check can finish. See {@link #isForcedPasswordChange} and
  * {@link #deferExpiryCheck}.</p>
+ *
+ * <p>This runs on every request, so the checks are ordered cheapest first: a session that has finished with MFA, which
+ * is nearly all of them, is answered from its own attributes without a database lookup.</p>
  */
 @Component
 @PropertySource("classpath:/config/mfa/xnat-mfa.properties")
@@ -62,29 +65,30 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     private final MFAPreferences                   mfaPreferences;
     private final String                           errorPath;
     private final String                           changePasswordPath;
-    private final String                           changePasswordAction;
     private final Set<String>                      passwordChangePaths;
+    private final Set<String>                      mfaPagePaths;
 
     public MultifactorAuthenticationFilter(final MultifactorAuthenticationService multifactorAuthenticationService,
                                            final MFAPreferences mfaPreferences,
                                            final AliasTokenService aliasTokenService,
+                                           final List<MFAStrategyI> strategies,
                                            @Value("${mfa.errorPath}") final String errorPath,
                                            @Value("${mfa.changePasswordPath}") final String changePasswordPath,
-                                           @Value("${mfa.changePasswordAction}") final String changePasswordAction,
-                                           @Value("${mfa.loginPath}") final String loginPath,
-                                           @Value("${mfa.loginAction}") final String loginAction,
-                                           @Value("${mfa.logoutAction}") final String logoutAction) {
+                                           @Value("${mfa.passwordChangePaths}") final String passwordChangePaths) {
         this.multifactorAuthenticationService = multifactorAuthenticationService;
         this.aliasTokenService                = aliasTokenService;
         this.mfaPreferences                   = mfaPreferences;
         this.errorPath                        = errorPath;
         this.changePasswordPath               = changePasswordPath;
-        this.changePasswordAction             = changePasswordAction;
+        this.passwordChangePaths              = toPathSet(passwordChangePaths);
 
-        // The same set XnatExpiredPasswordFilter lets through while a password change is pending. Both filters have to
-        // agree on it, or they redirect each other's pages forever.
-        this.passwordChangePaths = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
-                changePasswordPath, changePasswordAction, loginPath, loginAction, logoutAction)));
+        // Every page this plugin owns, so that a guest can be turned away from all of them. The strategies and their
+        // pages are fixed once the application context is up, so this is worked out once rather than per request.
+        this.mfaPagePaths = Stream.concat(Stream.of(errorPath),
+                                          strategies.stream().flatMap(strategy -> Stream.of(strategy.getVerificationTemplatePath(),
+                                                                                            strategy.getRegistrationTemplatePath())))
+                                  .filter(StringUtils::isNotBlank)
+                                  .collect(Collectors.toSet());
     }
 
     @Override
@@ -101,6 +105,14 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Nearly every request belongs to a session that has already passed MFA. Answer those from the session alone:
+        // working out whether MFA applies reads the database, and this filter sees every request to the application.
+        if (BooleanUtils.toBoolean((Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_VERIFIED))) {
+            restoreExpiryCheck(httpSession);
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String path = getPathWithinApplication(request);
 
         if (isAliasToken(request)) {
@@ -112,22 +124,9 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        final boolean mfaRequired      = BooleanUtils.toBoolean(multifactorAuthenticationService.isMFARequired(user.getUsername()));
-        final boolean mfaTokenVerified = BooleanUtils.toBoolean((Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_VERIFIED));
-
-        log.debug("MultifactorAuthenticationFilter.doFilterInternal(): path: {}, mfaRequired: {}, mfaTokenVerified: {}, userLogin: {}",
-                  path, mfaRequired, mfaTokenVerified, user.getLogin());
-
-        // Let them in if MFA doesn't apply or the token has been verified.
-        if (!mfaRequired || mfaTokenVerified) {
-            restoreExpiryCheck(httpSession);
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         if (user.isGuest()) {
             // A guest has no MFA to complete, so the MFA pages would only render an empty form for them.
-            if (isMfaPage(path)) {
+            if (mfaPagePaths.contains(path)) {
                 redirect(request, response, mfaPreferences.getMfaRedirectPath());
                 return;
             }
@@ -135,18 +134,15 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // From here the user has authenticated with a password but has not passed MFA.
-
-        MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(user.getUsername());
-        if (null == mfe) {
-            mfe = multifactorAuthenticationService.createMfe(user.getUsername());
-        }
-
-        if (mfe.isMfaExempted()) {
+        if (!BooleanUtils.toBoolean(multifactorAuthenticationService.isMFARequired(user.getUsername()))) {
             restoreExpiryCheck(httpSession);
             filterChain.doFilter(request, response);
             return;
         }
+
+        log.debug("MultifactorAuthenticationFilter.doFilterInternal(): holding path {} for user {} until MFA is done", path, user.getLogin());
+
+        // From here the user has authenticated with a password but has not passed MFA.
 
         // XNAT's expired-password filter runs next and would send every request below, including the MFA pages and
         // their scripts, to the password page. Hold its check until MFA is done, then restore it so XNAT can ask for
@@ -156,6 +152,17 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         // The MFA pages are ordinary XNAT pages, so they need XNAT's scripts and styles. These are public: a user who
         // has not logged in at all can already request them.
         if (isStaticAsset(path)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        MultifactorEntity mfe = multifactorAuthenticationService.getMultifactorAuth(user.getUsername());
+        if (null == mfe) {
+            mfe = multifactorAuthenticationService.createMfe(user.getUsername());
+        }
+
+        if (mfe.isMfaExempted()) {
+            restoreExpiryCheck(httpSession);
             filterChain.doFilter(request, response);
             return;
         }
@@ -173,23 +180,24 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // The endpoints the verification page itself calls.
-        if (isUriAllowed(path)) {
+        if (ALLOWED_PATHS.contains(path)) {
             filterChain.doFilter(request, response);
             return;
         }
+
+        if (hasMfaError(httpSession) && StringUtils.equals(path, errorPath)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        restorePreferredMfa(httpSession, mfe);
 
         final MFAStrategyI mfaStrategy;
         try {
-            restorePreferredMfa(httpSession, mfe);
-            mfaStrategy = multifactorAuthenticationService.getPreferredMFAStrategy(user.getUsername());
+            mfaStrategy = multifactorAuthenticationService.getPreferredMFAStrategy(mfe);
         } catch (MFAStrategyNotFoundException e) {
             log.error("Failed to retrieve mfaStrategy for user: {}.", user.getUsername(), e);
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Multi-factor authentication is not configured correctly. Please contact your site administrator.");
-            return;
-        }
-
-        if (isErrorPage(httpSession, path)) {
-            filterChain.doFilter(request, response);
             return;
         }
 
@@ -204,19 +212,25 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // Send one code per session. A page makes several requests at once, and each code replaces the one before it,
-        // so sending a code per request leaves the user with a mailbox of codes of which only the last one works.
+        // so sending a code per request leaves the user with a mailbox of codes of which only the last one works. Only
+        // the test and set is locked: sending the code talks to a mail or SMS server, and holding the session's lock
+        // across that would stall every other request this session has in flight.
+        final boolean sendCode;
         synchronized (WebUtils.getSessionMutex(httpSession)) {
-            if (!BooleanUtils.toBooleanDefaultIfNull((Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_SENT), false)) {
+            sendCode = !BooleanUtils.toBoolean((Boolean) httpSession.getAttribute(MFAConstants.MFA_TOKEN_SENT));
+            if (sendCode) {
                 httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, true);
-                try {
-                    multifactorAuthenticationService.sendCode(user);
-                } catch (Exception e) {
-                    log.error("Failed to send a multi-factor authentication code to user: {}.", user.getUsername(), e);
-                    httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, false);
-                    httpSession.setAttribute(MFAConstants.MFA_ERROR, true);
-                    redirect(request, response, mfaStrategy.getErrorTemplatePath());
-                    return;
-                }
+            }
+        }
+        if (sendCode) {
+            try {
+                multifactorAuthenticationService.sendCode(user);
+            } catch (Exception e) {
+                log.error("Failed to send a multi-factor authentication code to user: {}.", user.getUsername(), e);
+                httpSession.setAttribute(MFAConstants.MFA_TOKEN_SENT, false);
+                httpSession.setAttribute(MFAConstants.MFA_ERROR, true);
+                redirect(request, response, errorPath);
+                return;
             }
         }
 
@@ -240,21 +254,33 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
+     * Splits a comma-separated property into a set of paths.
+     *
+     * @param paths The property value.
+     *
+     * @return The paths it names.
+     */
+    private static Set<String> toPathSet(final String paths) {
+        return Arrays.stream(StringUtils.split(StringUtils.defaultString(paths), ','))
+                     .map(StringUtils::trim)
+                     .filter(StringUtils::isNotBlank)
+                     .collect(Collectors.toSet());
+    }
+
+    /**
      * Returns the request's path within the application, with the context path and any session ID removed.
      *
      * <p>This is built from the servlet path and path info rather than from the request URI, because the container has
      * already decoded and normalized those: a request for {@code /app/../xapi/users} arrives here as
-     * {@code /xapi/users}, and so can't be passed off as a request for an allowed page.</p>
+     * {@code /xapi/users}, and so can't be passed off as a request for an allowed page. Spring Security's
+     * {@code AntPathRequestMatcher} reads the path the same way.</p>
      *
      * @param request The request to read.
      *
      * @return The request's path within the application.
      */
     private static String getPathWithinApplication(final HttpServletRequest request) {
-        final String servletPath = StringUtils.defaultString(request.getServletPath());
-        final String pathInfo    = StringUtils.defaultString(request.getPathInfo());
-        final String path        = servletPath + pathInfo;
-        return StringUtils.defaultIfBlank(path, "/");
+        return StringUtils.defaultString(request.getServletPath()) + StringUtils.defaultString(request.getPathInfo());
     }
 
     /**
@@ -269,25 +295,6 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Indicates whether the path is one of the MFA plugin's own pages, for any configured method.
-     *
-     * @param path The path within the application.
-     *
-     * @return Whether the path is one of the plugin's pages.
-     */
-    private boolean isMfaPage(final String path) {
-        if (StringUtils.equals(path, errorPath)) {
-            return true;
-        }
-        final List<MFAStrategyI> strategies = MFAStrategyManager.GetAvailableStrategies();
-        if (null == strategies) {
-            return false;
-        }
-        return strategies.stream().anyMatch(strategy -> StringUtils.equals(path, strategy.getVerificationTemplatePath())
-                                                        || StringUtils.equals(path, strategy.getRegistrationTemplatePath()));
-    }
-
-    /**
      * Indicates whether this session reached XNAT through a link that requires the password to be changed, which is
      * how both the "forgot password" email and the account reactivation email log a user in.
      *
@@ -296,7 +303,7 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
      * @return Whether a password change is required before anything else.
      */
     private static boolean isForcedPasswordChange(final HttpSession session) {
-        return BooleanUtils.toBooleanDefaultIfNull((Boolean) session.getAttribute(MFAConstants.XNAT_FORCE_PASSWORD_CHANGE), false);
+        return BooleanUtils.toBoolean((Boolean) session.getAttribute(MFAConstants.XNAT_FORCE_PASSWORD_CHANGE));
     }
 
     /**
@@ -307,6 +314,8 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
      */
     private static void deferExpiryCheck(final HttpSession session) {
         if (BooleanUtils.isFalse((Boolean) session.getAttribute(MFAConstants.XNAT_PASSWORD_EXPIRED))) {
+            // Either XNAT has already decided the password isn't expired, or this was deferred on an earlier request.
+            // Either way there is nothing to do, and nothing of XNAT's to put back afterwards.
             return;
         }
         session.setAttribute(MFAConstants.XNAT_PASSWORD_EXPIRED, Boolean.FALSE);
@@ -316,6 +325,11 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     /**
      * Undoes {@link #deferExpiryCheck}, so that XNAT checks the password's age again on this request and sends the user
      * to the password page if it really has expired.
+     *
+     * <p>The marker attribute is what tells this apart from XNAT having cached the answer itself, which must be left
+     * alone. This is called from the points where MFA stops holding the session rather than once per request, because
+     * a session's requests run concurrently: removing the attribute while a sibling request is still waiting on MFA
+     * would send that request to the password page and start the loop again.</p>
      *
      * @param session The session to restore the check on.
      */
@@ -346,16 +360,14 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Indicates whether this is a request for the error page after a failure this session actually hit.
+     * Indicates whether sending this session's code failed, which is what the error page reports.
      *
      * @param session The session to check.
-     * @param path    The path within the application.
      *
-     * @return Whether the error page should be shown.
+     * @return Whether this session hit a failure.
      */
-    private boolean isErrorPage(final HttpSession session, final String path) {
-        return BooleanUtils.toBooleanDefaultIfNull((Boolean) session.getAttribute(MFAConstants.MFA_ERROR), false)
-               && StringUtils.equals(path, errorPath);
+    private static boolean hasMfaError(final HttpSession session) {
+        return BooleanUtils.toBoolean((Boolean) session.getAttribute(MFAConstants.MFA_ERROR));
     }
 
     private boolean isAliasToken(HttpServletRequest request) {
@@ -375,33 +387,30 @@ public class MultifactorAuthenticationFilter extends OncePerRequestFilter {
     /**
      * Indicates whether the path is a static asset, which XNAT serves to anyone, logged in or not.
      *
+     * <p>These prefixes are a narrow subset of the open URLs XNAT declares in
+     * {@code META-INF/xnat/security/configured-urls.yaml}. The full list is not used, because it also opens up
+     * endpoints such as {@code /REST/JSESSION} that would hand a session that hasn't passed MFA something it can
+     * use.</p>
+     *
      * @param path The path within the application.
      *
      * @return Whether the path is a static asset.
      */
     private static boolean isStaticAsset(final String path) {
-        return StringUtils.startsWithAny(path, "/scripts/", "/style/", "/images/")
+        return StringUtils.startsWithAny(path, "/scripts/", "/style/", "/images/", "/themes/")
                || StringUtils.equals(path, "/favicon.ico");
     }
 
     /**
-     * Indicates whether the path is one of the plugin's own endpoints, which the MFA pages call to show the form, send
-     * a code and verify it.
-     *
-     * @param path The path within the application.
-     *
-     * @return Whether the endpoint can be called before MFA is complete.
+     * The plugin's own endpoints, which the MFA pages call to show the form, send a code and verify it. These are the
+     * only endpoints reachable before MFA is complete.
      */
-    private static boolean isUriAllowed(final String path) {
-        return ALLOWED_PATHS.contains(path);
-    }
-
-    private static final Set<String> ALLOWED_PATHS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+    private static final Set<String> ALLOWED_PATHS = Set.of(
             "/xapi/mfa",
             "/xapi/mfa/verify",
             "/xapi/mfa/status",
             "/xapi/mfa/emailbackup",
             "/xapi/mfa/preference",
             "/xapi/mfa/switch_to_email",
-            "/xapi/mfa/send_code")));
+            "/xapi/mfa/send_code");
 }
